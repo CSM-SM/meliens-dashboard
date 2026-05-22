@@ -1,0 +1,2634 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MELIENS — 주간보고 대시보드</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --navy:#002D5E;--navy-mid:#003D7A;--navy-dark:#001E40;
+  --blue:#007AFF;--teal:#11CAA0;--red:#FF4B4B;--amber:#F5A623;--purple:#6C5CE7;
+  --bg:#F0F3F8;--surface:#fff;--surface2:#F8FAFC;
+  --border:rgba(0,45,94,0.10);--border2:rgba(0,45,94,0.06);
+  --t1:#0A1628;--t2:#4A5C72;--t3:#8A9BB0;
+  --sidebar-w:240px;--topbar-h:60px;
+  --shadow:0 2px 12px rgba(0,45,94,0.08);
+  --shadow-md:0 4px 24px rgba(0,45,94,0.12);
+}
+[data-theme="dark"]{
+  --bg:#07111F;--surface:#0D1B2E;--surface2:#102039;
+  --border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.04);
+  --t1:#E8EFF8;--t2:#7A90A8;--t3:#3A4E62;
+  --shadow:0 2px 12px rgba(0,0,0,0.3);
+  --shadow-md:0 4px 24px rgba(0,0,0,0.4);
+}
+html,body{height:100%;font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--t1);font-size:14px;-webkit-font-smoothing:antialiased}
+a{text-decoration:none;color:inherit}
+button{font-family:inherit;cursor:pointer;border:none;background:none}
+
+/* ── LAYOUT ── */
+.app{display:flex;height:100vh;overflow:hidden}
+.sidebar{width:var(--sidebar-w);background:var(--navy);display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto;transition:width .25s}
+.sidebar.collapsed{width:60px}
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+.topbar{height:var(--topbar-h);background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 24px;gap:16px;flex-shrink:0}
+.content{flex:1;overflow-y:auto;padding:24px}
+
+/* ── SIDEBAR ── */
+.logo-wrap{padding:20px 18px 16px;border-bottom:1px solid rgba(255,255,255,0.07);flex-shrink:0}
+.logo{font-family:'Montserrat',sans-serif;font-weight:800;font-size:19px;color:#fff;letter-spacing:2.5px}
+.logo-tag{font-family:'Montserrat',sans-serif;font-size:9px;color:rgba(255,255,255,0.35);letter-spacing:3px;margin-top:2px}
+.nav-section{padding:12px 0}
+.nav-group-label{font-family:'Montserrat',sans-serif;font-size:9px;font-weight:700;color:rgba(255,255,255,0.28);letter-spacing:2px;padding:8px 18px 4px}
+.nav-item{display:flex;align-items:center;gap:11px;padding:9px 18px;color:rgba(255,255,255,0.58);font-size:13px;font-weight:500;cursor:pointer;transition:all .15s;border-left:3px solid transparent;white-space:nowrap;overflow:hidden}
+.nav-item svg{width:17px;height:17px;flex-shrink:0;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.nav-item:hover{background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.9)}
+.nav-item.active{background:rgba(0,122,255,0.18);color:#fff;border-left-color:var(--blue)}
+.nav-badge{margin-left:auto;background:var(--red);color:#fff;font-size:9px;padding:2px 5px;border-radius:8px;font-weight:700;font-family:'Montserrat',sans-serif}
+.nav-bottom{margin-top:auto;border-top:1px solid rgba(255,255,255,0.07);padding:10px 0}
+
+/* ── TOPBAR ── */
+.topbar-title{font-size:15px;font-weight:700;color:var(--t1)}
+.topbar-sub{font-size:11px;color:var(--t3);margin-top:1px}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:10px}
+.week-chip{font-family:'Montserrat',sans-serif;font-size:11px;font-weight:700;background:rgba(0,122,255,0.1);color:var(--blue);padding:5px 12px;border-radius:20px}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s}
+.btn-primary{background:var(--navy);color:#fff}
+.btn-primary:hover{background:var(--navy-mid)}
+.btn-outline{background:var(--surface);border:1px solid var(--border);color:var(--t2)}
+.btn-outline:hover{border-color:var(--blue);color:var(--blue)}
+.btn svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+/* ── PAGES ── */
+.page{display:none}
+.page.active{display:block}
+
+/* ── GRID HELPERS ── */
+.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.grid-2-1{display:grid;grid-template-columns:1fr 340px;gap:14px}
+@media(max-width:1100px){.grid-4{grid-template-columns:repeat(2,1fr)}.grid-2-1{grid-template-columns:1fr}}
+@media(max-width:768px){.grid-4,.grid-3,.grid-2{grid-template-columns:1fr}.sidebar{position:fixed;z-index:200;height:100%;transform:translateX(-100%)}.sidebar.mobile-open{transform:none}.content{padding:16px}}
+
+/* ── CARDS ── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px}
+.card-sm{padding:16px}
+.card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.card-title{font-size:13px;font-weight:700;color:var(--t1)}
+.card-sub{font-size:11px;color:var(--t3);font-family:'Montserrat',sans-serif}
+
+/* ── KPI CARDS ── */
+.kpi-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px 20px;position:relative;overflow:hidden}
+.kpi-accent{position:absolute;top:0;left:0;right:0;height:3px;border-radius:14px 14px 0 0}
+.kpi-label{font-size:11px;color:var(--t3);font-family:'Montserrat',sans-serif;font-weight:600;letter-spacing:.5px;margin-bottom:10px}
+.kpi-value{font-family:'Montserrat',sans-serif;font-size:28px;font-weight:800;color:var(--t1);line-height:1}
+.kpi-unit{font-size:14px;font-weight:400;color:var(--t2)}
+.kpi-change{display:flex;align-items:center;gap:4px;margin-top:8px;font-size:11px;font-weight:600;font-family:'Montserrat',sans-serif}
+.kpi-change.up{color:var(--teal)}
+.kpi-change.down{color:var(--red)}
+.kpi-change.neutral{color:var(--t3)}
+.kpi-icon{position:absolute;top:16px;right:16px;width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center}
+.kpi-icon svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.icon-blue{background:rgba(0,122,255,0.1);color:var(--blue)}
+.icon-teal{background:rgba(17,202,160,0.1);color:var(--teal)}
+.icon-red{background:rgba(255,75,75,0.1);color:var(--red)}
+.icon-amber{background:rgba(245,166,35,0.1);color:var(--amber)}
+.icon-purple{background:rgba(108,92,231,0.1);color:var(--purple)}
+
+/* ── FILTER TABS ── */
+.filter-tabs{display:flex;gap:3px;background:var(--surface2);border:1px solid var(--border2);padding:3px;border-radius:8px}
+.ftab{font-family:'Montserrat',sans-serif;font-size:11px;font-weight:600;padding:4px 10px;border-radius:6px;cursor:pointer;color:var(--t3);transition:all .15s}
+.ftab.active{background:var(--navy);color:#fff}
+
+/* ── RISK CENTER ── */
+.risk-item{display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border-radius:9px;margin-bottom:8px;font-size:12px;line-height:1.5}
+.risk-item:last-child{margin-bottom:0}
+.risk-danger{background:rgba(255,75,75,0.06);border:1px solid rgba(255,75,75,0.18)}
+.risk-warn{background:rgba(245,166,35,0.06);border:1px solid rgba(245,166,35,0.18)}
+.risk-ok{background:rgba(17,202,160,0.06);border:1px solid rgba(17,202,160,0.18)}
+.risk-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:4px}
+.dot-red{background:var(--red)}
+.dot-amber{background:var(--amber)}
+.dot-teal{background:var(--teal)}
+.risk-text{color:var(--t2)}
+.risk-text strong{color:var(--t1);font-weight:700}
+
+/* ── AI BRIEF CARD ── */
+.ai-card{background:linear-gradient(145deg,var(--navy-dark) 0%,var(--navy-mid) 100%);border-radius:14px;padding:20px;color:#fff}
+.ai-label{display:inline-flex;align-items:center;gap:6px;font-family:'Montserrat',sans-serif;font-size:9px;font-weight:700;letter-spacing:2px;background:rgba(0,122,255,0.3);color:#7EC8FF;padding:4px 10px;border-radius:20px;margin-bottom:12px}
+.pulse{width:6px;height:6px;border-radius:50%;background:#7EC8FF;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.8)}}
+.ai-item{display:flex;gap:8px;padding:9px 10px;background:rgba(255,255,255,0.07);border-radius:8px;margin-bottom:6px;font-size:12px;color:rgba(255,255,255,0.82);line-height:1.55}
+.ai-item:last-child{margin-bottom:0}
+.ai-tag{flex-shrink:0;font-size:9px;font-weight:700;padding:3px 7px;border-radius:5px;margin-top:1px;font-family:'Montserrat',sans-serif;letter-spacing:.5px}
+.tag-up{background:rgba(17,202,160,0.25);color:#6EFAD8}
+.tag-dn{background:rgba(255,75,75,0.25);color:#FF9999}
+.tag-ok{background:rgba(0,122,255,0.25);color:#7EC8FF}
+.tag-b2b{background:rgba(245,166,35,0.25);color:#FFD080}
+
+/* ── PROGRESS BARS ── */
+.prog-row{margin-bottom:14px}
+.prog-row:last-child{margin-bottom:0}
+.prog-meta{display:flex;justify-content:space-between;margin-bottom:5px}
+.prog-label{font-size:12px;color:var(--t2)}
+.prog-pct{font-size:12px;font-weight:700;font-family:'Montserrat',sans-serif}
+.prog-track{height:6px;background:var(--border2);border-radius:10px;overflow:hidden}
+.prog-fill{height:100%;border-radius:10px;transition:width .6s cubic-bezier(.4,0,.2,1)}
+
+/* ── HEATMAP ── */
+.heatmap{display:grid;grid-template-columns:repeat(4,1fr);gap:5px}
+.hcell{border-radius:7px;padding:7px 4px;text-align:center;font-size:10px;font-weight:700;font-family:'Montserrat',sans-serif;line-height:1.35;cursor:pointer;transition:transform .15s}
+.hcell:hover{transform:scale(1.05)}
+
+/* ── RUN RATE BOX ── */
+.run-rate-box{background:rgba(0,122,255,0.07);border:1px solid rgba(0,122,255,0.15);border-radius:10px;padding:12px 14px;margin-top:14px;font-size:12px;color:var(--t2);line-height:1.7}
+.run-rate-box strong{font-family:'Montserrat',sans-serif;font-size:16px;font-weight:800;color:var(--blue)}
+
+/* ── TABLES ── */
+.table-wrap{overflow-x:auto;border-radius:10px;border:1px solid var(--border)}
+table{width:100%;border-collapse:collapse;font-size:12px}
+thead th{background:var(--surface2);padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:var(--t3);font-family:'Montserrat',sans-serif;letter-spacing:.5px;border-bottom:1px solid var(--border);white-space:nowrap}
+tbody td{padding:10px 14px;border-bottom:1px solid var(--border2);color:var(--t2);vertical-align:middle}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:hover td{background:var(--surface2)}
+.td-name{font-weight:600;color:var(--t1)}
+.td-sku{font-family:'Montserrat',sans-serif;font-size:10px;color:var(--t3)}
+.td-right{text-align:right;font-family:'Montserrat',sans-serif;font-weight:600}
+.td-danger{color:var(--red);font-weight:700}
+.td-ok{color:var(--teal)}
+.stock-bar{display:flex;align-items:center;gap:6px}
+.stock-mini{width:60px;height:4px;background:var(--border2);border-radius:4px;overflow:hidden}
+.stock-mini-fill{height:100%;border-radius:4px}
+
+/* ── CHANNEL TABS ── */
+.ch-tabs{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap}
+.ch-tab{font-size:11px;font-weight:600;padding:5px 12px;border-radius:20px;cursor:pointer;border:1px solid var(--border);color:var(--t3);transition:all .15s;font-family:'Montserrat',sans-serif}
+.ch-tab.active{background:var(--navy);color:#fff;border-color:var(--navy)}
+
+/* ── UPLOAD ZONE ── */
+.upload-zone{border:2px dashed var(--border);border-radius:12px;padding:40px;text-align:center;cursor:pointer;transition:all .2s;background:var(--surface2)}
+.upload-zone:hover,.upload-zone.drag{border-color:var(--blue);background:rgba(0,122,255,0.04)}
+.upload-zone svg{width:40px;height:40px;stroke:var(--t3);fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;margin-bottom:12px}
+.upload-zone p{font-size:14px;color:var(--t2);margin-bottom:4px}
+.upload-zone span{font-size:12px;color:var(--t3)}
+.upload-history{margin-top:20px}
+.upload-file-item{display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;margin-bottom:8px}
+.upload-file-item svg{width:16px;height:16px;stroke:var(--teal);fill:none;stroke-width:2;flex-shrink:0}
+.file-name{font-size:13px;font-weight:600;color:var(--t1);flex:1}
+.file-meta{font-size:11px;color:var(--t3)}
+.file-status{font-size:11px;font-weight:700;color:var(--teal);background:rgba(17,202,160,0.1);padding:3px 8px;border-radius:6px;font-family:'Montserrat',sans-serif}
+
+/* ── VOC CHART AREA ── */
+.voc-legend{display:flex;flex-direction:column;gap:8px;padding-left:16px}
+.voc-item{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--t2)}
+.voc-dot{width:10px;height:10px;border-radius:3px;flex-shrink:0}
+.voc-pct{margin-left:auto;font-weight:700;font-family:'Montserrat',sans-serif;color:var(--t1)}
+
+/* ── B2B PIPELINE ── */
+.pipeline-wrap{display:flex;gap:0;margin-bottom:20px}
+.pipe-stage{flex:1;text-align:center}
+.pipe-label{font-size:10px;color:var(--t3);font-family:'Montserrat',sans-serif;font-weight:600;letter-spacing:.5px;margin-bottom:8px}
+.pipe-bar-wrap{display:flex;align-items:center}
+.pipe-bar{height:8px;flex:1;background:var(--border2);position:relative;overflow:hidden}
+.pipe-bar-fill{position:absolute;left:0;top:0;height:100%;transition:width .5s}
+.pipe-bar:first-child{border-radius:8px 0 0 8px}
+.pipe-node{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;font-family:'Montserrat',sans-serif;border:2px solid var(--border);color:var(--t3);background:var(--surface);flex-shrink:0}
+.pipe-node.done{background:var(--teal);border-color:var(--teal);color:#fff}
+.pipe-node.active-node{background:var(--blue);border-color:var(--blue);color:#fff}
+.b2b-table-wrap .td-right{color:var(--t1)}
+
+/* ── FLOATING BANNER ── */
+.float-banner{position:fixed;bottom:24px;right:24px;background:var(--navy);border-radius:14px;padding:16px 18px;width:270px;box-shadow:0 8px 40px rgba(0,0,0,0.22);z-index:300;font-size:12px;transform:translateY(0);transition:transform .3s}
+.float-banner.hidden{transform:translateY(calc(100% + 30px))}
+.fb-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.fb-title{display:flex;align-items:center;gap:7px;font-size:10px;color:rgba(255,255,255,.5);font-family:'Montserrat',sans-serif;font-weight:700;letter-spacing:1px}
+.fb-close{width:20px;height:20px;border-radius:50%;background:rgba(255,255,255,.1);color:rgba(255,255,255,.6);font-size:12px;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.fb-item{display:flex;align-items:flex-start;gap:8px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.07);line-height:1.5;color:rgba(255,255,255,.82)}
+.fb-item:last-child{border-bottom:none;padding-bottom:0}
+.fb-num{flex-shrink:0;font-size:9px;font-weight:800;background:var(--red);width:17px;height:17px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Montserrat',sans-serif;margin-top:1px}
+
+/* ── DARK MODE TOGGLE ── */
+.toggle-wrap{display:flex;align-items:center;gap:10px;color:rgba(255,255,255,.6);font-size:12px;padding:9px 18px;cursor:pointer}
+.toggle{width:36px;height:20px;background:rgba(255,255,255,.15);border-radius:10px;position:relative;transition:background .2s}
+.toggle.on{background:var(--blue)}
+.toggle::after{content:'';position:absolute;width:14px;height:14px;background:#fff;border-radius:50%;top:3px;left:3px;transition:transform .2s}
+.toggle.on::after{transform:translateX(16px)}
+
+/* ── ASSET LIBRARY ── */
+.asset-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px}
+.asset-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;cursor:pointer;transition:all .2s}
+.asset-card:hover{border-color:var(--blue);box-shadow:var(--shadow-md);transform:translateY(-2px)}
+.asset-thumb{height:140px;background:var(--surface2);display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden}
+.asset-thumb svg{width:40px;height:40px;stroke:var(--t3);fill:none;stroke-width:1.5;opacity:.5}
+.asset-thumb img{width:100%;height:100%;object-fit:cover}
+.asset-hover{position:absolute;inset:0;background:rgba(0,45,94,.85);display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .2s;gap:12px}
+.asset-card:hover .asset-hover{opacity:1}
+.asset-action{width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;color:#fff;cursor:pointer}
+.asset-action svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2}
+.asset-info{padding:10px 12px}
+.asset-name{font-size:12px;font-weight:700;color:var(--t1);margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.asset-tags{display:flex;gap:4px;flex-wrap:wrap}
+.asset-tag{font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;font-family:'Montserrat',sans-serif}
+.tag-detail{background:rgba(0,122,255,0.1);color:var(--blue)}
+.tag-thumb{background:rgba(17,202,160,0.1);color:var(--teal)}
+.tag-banner{background:rgba(245,166,35,0.1);color:var(--amber)}
+.tag-sns{background:rgba(108,92,231,0.1);color:var(--purple)}
+
+/* ── SECTION TITLE ── */
+.section-title{font-size:18px;font-weight:800;color:var(--t1);margin-bottom:4px}
+.section-sub{font-size:12px;color:var(--t3);margin-bottom:20px}
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- ── SIDEBAR ── -->
+<nav class="sidebar" id="sidebar">
+  <div class="logo-wrap">
+    <div class="logo">MELIENS</div>
+    <div class="logo-tag">WEEKLY REPORT SYSTEM</div>
+  </div>
+  <div class="nav-section" style="flex:1">
+    <div class="nav-group-label">OVERVIEW</div>
+    <div class="nav-item active" onclick="showPage('home',this)">
+      <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      대시보드 홈
+    </div>
+    <div class="nav-group-label">PERFORMANCE</div>
+    <div class="nav-item" onclick="showPage('sales',this)">
+      <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      이커머스 매출
+    </div>
+    <div class="nav-item" onclick="showPage('ads',this)">
+      <svg viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+      광고 성과
+      <span class="nav-badge">!</span>
+    </div>
+    <div class="nav-item" onclick="showPage('b2b',this)">
+      <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      B2B / 신규 매출
+    </div>
+    <div class="nav-item" onclick="showPage('cx',this)">
+      <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      CX / VOC
+    </div>
+    <div class="nav-item" onclick="showPage('inventory',this)">
+      <svg viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+      재고 관리
+    </div>
+    <div class="nav-group-label">ASSETS</div>
+    <div class="nav-item" onclick="showPage('assets',this)">
+      <svg viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+      에셋 라이브러리
+    </div>
+    <div class="nav-item" onclick="showPage('upload',this)">
+      <svg viewBox="0 0 24 24"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>
+      데이터 업로드
+    </div>
+  </div>
+  <div class="nav-bottom">
+    <div class="toggle-wrap" onclick="toggleDark()">
+      <svg style="width:15px;height:15px;stroke:rgba(255,255,255,.5);fill:none;stroke-width:2;flex-shrink:0" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      다크 모드
+      <div class="toggle" id="darkToggle"></div>
+    </div>
+  </div>
+</nav>
+
+<!-- ── MAIN ── -->
+<div class="main">
+  <div class="topbar">
+    <button class="btn btn-outline" onclick="toggleSidebar()" style="padding:6px 10px">
+      <svg style="width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2" viewBox="0 0 24 24"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+    <div>
+      <div class="topbar-title" id="pageTitle">종합 대시보드</div>
+      <div class="topbar-sub" id="pageDate"></div>
+    </div>
+    <div class="topbar-right">
+      <div id="todayDate" style="font-size:12px;color:var(--t3);font-family:'Montserrat',sans-serif;font-weight:600"></div>
+      <button class="btn btn-outline" onclick="exportExcel()" title="엑셀 다운로드" style="gap:5px">
+        <svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:var(--teal);fill:none;stroke-width:2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><polyline points="8 13 10.5 16 8 19"/><polyline points="13 13 10.5 16 13 19"/></svg>
+        <span style="color:var(--teal);font-weight:700">EXCEL</span>
+      </button>
+      <button class="btn btn-outline" onclick="exportPDF()" title="PDF 다운로드" style="gap:5px">
+        <svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:var(--red);fill:none;stroke-width:2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        <span style="color:var(--red);font-weight:700">PDF</span>
+      </button>
+      <button class="btn btn-outline" onclick="exportPPT()" title="PPT 다운로드" style="gap:5px">
+        <svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:var(--amber);fill:none;stroke-width:2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+        <span style="color:var(--amber);font-weight:700">PPT</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- ═══ HOME PAGE ═══ -->
+    <div class="page active" id="page-home">
+      <div class="grid-4" style="margin-bottom:14px">
+        <!-- 총 매출 : 원 단위 -->
+        <div class="kpi-card" id="kpi-revenue">
+          <div class="kpi-accent" style="background:var(--blue)"></div>
+          <div class="kpi-icon icon-blue"><svg viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
+          <div class="kpi-label">이번 주 총 매출</div>
+          <div class="kpi-value" id="val-revenue">₩84,700,000<span class="kpi-unit">원</span></div>
+          <div class="kpi-change up" id="chg-revenue">▲ 전주 대비 +11.2%</div>
+        </div>
+        <!-- 공헌이익 : 원 단위 -->
+        <div class="kpi-card" id="kpi-margin">
+          <div class="kpi-accent" style="background:var(--teal)"></div>
+          <div class="kpi-icon icon-teal"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+          <div class="kpi-label">실질 공헌이익</div>
+          <div class="kpi-value" id="val-margin">₩23,100,000<span class="kpi-unit">원</span></div>
+          <div class="kpi-change up" id="chg-margin">▲ 마진율 27.3%</div>
+        </div>
+        <!-- ROAS : 전일 대비 증감 -->
+        <div class="kpi-card" id="kpi-roas">
+          <div class="kpi-accent" style="background:var(--red)"></div>
+          <div class="kpi-icon icon-red"><svg viewBox="0 0 24 24"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg></div>
+          <div class="kpi-label">평균 ROAS</div>
+          <div class="kpi-value" id="val-roas">124<span class="kpi-unit">%</span></div>
+          <div class="kpi-change down" id="chg-roas">▼ 전일 대비 –5.0%</div>
+        </div>
+        <!-- 품절임박 : 클릭 시 모달 -->
+        <div class="kpi-card" id="kpi-stock" onclick="showLowStockModal()" style="cursor:pointer;transition:box-shadow .2s" onmouseenter="this.style.boxShadow='0 4px 20px rgba(245,166,35,0.25)'" onmouseleave="this.style.boxShadow=''">
+          <div class="kpi-accent" style="background:var(--amber)"></div>
+          <div class="kpi-icon icon-amber"><svg viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
+          <div class="kpi-label">품절 임박 SKU <span style="font-size:10px;color:var(--amber)">클릭하여 확인 →</span></div>
+          <div class="kpi-value" id="val-stock">3<span class="kpi-unit">개</span></div>
+          <div class="kpi-change down" id="chg-stock">▼ 7일 이내 소진</div>
+        </div>
+      </div>
+
+      <div class="grid-2-1" style="margin-bottom:14px">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">주간 매출 추이</div>
+            <div class="filter-tabs">
+              <div class="ftab" onclick="setHomeFilter(this,'일')">일</div><div class="ftab active" onclick="setHomeFilter(this,'주')">주</div><div class="ftab" onclick="setHomeFilter(this,'월')">월</div><div class="ftab" onclick="setHomeFilter(this,'년')">년</div>
+            </div>
+          </div>
+          <div style="position:relative;height:210px">
+            <canvas id="homeChart" role="img" aria-label="주간 매출 추이 (원 단위)">주간 매출 추이</canvas>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">🚦 신호등 리스크 센터</div>
+            <div class="card-sub">실시간</div>
+          </div>
+          <div class="risk-item risk-danger">
+            <div class="risk-dot dot-red"></div>
+            <div class="risk-text"><strong>메타 광고</strong> ROAS 119% — 기준치(130%) 미달, 소재 교체 필요</div>
+          </div>
+          <div class="risk-item risk-danger">
+            <div class="risk-dot dot-red"></div>
+            <div class="risk-text"><strong>넥밴드선풍기 S</strong> 재고 67개 (5일치) — 즉시 발주 필요</div>
+          </div>
+          <div class="risk-item risk-warn">
+            <div class="risk-dot dot-amber"></div>
+            <div class="risk-text"><strong>W컨셉</strong> 전주 대비 매출 –18% 급감</div>
+          </div>
+          <div class="risk-item risk-ok">
+            <div class="risk-dot dot-teal"></div>
+            <div class="risk-text"><strong>쿠팡 / 스마트스토어</strong> 목표 대비 정상 운영 중</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid-3">
+        <div class="ai-card">
+          <div class="ai-label"><div class="pulse"></div>AI WEEKLY BRIEF</div>
+          <div style="font-size:13px;font-weight:700;color:#fff;margin-bottom:10px">이번 주 4대 영역 요약</div>
+          <div class="ai-item"><div class="ai-tag tag-up">매출</div>쿠팡이 전체 매출을 견인. 메타 광고 효율 저하로 전체 ROAS 5% 하락.</div>
+          <div class="ai-item"><div class="ai-tag tag-dn">광고</div>네이버 SA는 ROAS 178% 양호. 메타 즉각 소재 교체 권장.</div>
+          <div class="ai-item"><div class="ai-tag tag-b2b">B2B</div>온라인팜 계약 검토 단계 순항. 초도물량 예상 ₩12,000,000원.</div>
+          <div class="ai-item"><div class="ai-tag tag-ok">CX</div>굿서비스 유지. 불량 문의 전주 대비 –32% 감소.</div>
+        </div>
+
+        <!-- 히트맵 : 20개 전체 채널 -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">채널별 매출 히트맵</div>
+            <div class="card-sub">이번 주 전체</div>
+          </div>
+          <div class="heatmap" id="homeHeatmap" style="grid-template-columns:repeat(4,1fr);gap:4px"></div>
+        </div>
+
+        <!-- 월간 목표 : 수동 설정 -->
+        <div class="card" id="goalCard">
+          <div class="card-header">
+            <div class="card-title">월간 목표 달성</div>
+            <button onclick="toggleGoalEdit()" id="goalEditBtn" style="font-size:11px;font-weight:700;padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--blue);cursor:pointer">목표 설정</button>
+          </div>
+          <!-- 목표 입력 폼 (기본 숨김) -->
+          <div id="goalForm" style="display:none;margin-bottom:14px;background:var(--surface2);border-radius:10px;padding:12px;border:1px solid var(--border)">
+            <div style="font-size:11px;font-weight:700;color:var(--t3);font-family:Montserrat,sans-serif;letter-spacing:1px;margin-bottom:10px">이번 달 목표 입력 (원)</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+              <div><label style="font-size:11px;color:var(--t3)">총 매출 목표</label><input id="g-rev" type="number" placeholder="예) 350000" style="width:100%;margin-top:3px;font-size:12px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--t1)"></div>
+              <div><label style="font-size:11px;color:var(--t3)">공헌이익 목표</label><input id="g-margin" type="number" placeholder="예) 95000" style="width:100%;margin-top:3px;font-size:12px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--t1)"></div>
+              <div><label style="font-size:11px;color:var(--t3)">신규 B2B 목표</label><input id="g-b2b" type="number" placeholder="예) 30000" style="width:100%;margin-top:3px;font-size:12px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--t1)"></div>
+              <div><label style="font-size:11px;color:var(--t3)">ROAS 목표 (%)</label><input id="g-roas" type="number" placeholder="예) 130" style="width:100%;margin-top:3px;font-size:12px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--t1)"></div>
+            </div>
+            <button onclick="saveGoals()" style="width:100%;padding:8px;background:var(--navy);color:#fff;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;border:none">저장하기</button>
+          </div>
+          <!-- 달성률 바 -->
+          <div id="goalBars"></div>
+          <div class="run-rate-box" id="runRateBox">
+            목표 달성까지 잔여 <strong id="daysLeft">--</strong>일<br>
+            일일 필요 매출 <strong id="dailyNeed">--</strong>원/day
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ SALES PAGE ═══ -->
+    <div class="page" id="page-sales">
+      <div class="section-title">이커머스 매출 관리</div>
+      <div class="section-sub">채널별 / SKU별 매출 데이터. 엑셀 업로드 시 자동 반영됩니다.</div>
+
+      <div class="grid-4" style="margin-bottom:16px">
+        <div class="kpi-card"><div class="kpi-accent" style="background:var(--blue)"></div>
+          <div class="kpi-label">쿠팡</div><div class="kpi-value">₩38,200,000<span class="kpi-unit">원</span></div>
+          <div class="kpi-change up">▲ +18.4%</div></div>
+        <div class="kpi-card"><div class="kpi-accent" style="background:var(--teal)"></div>
+          <div class="kpi-label">스마트스토어</div><div class="kpi-value">₩22,700,000<span class="kpi-unit">원</span></div>
+          <div class="kpi-change up">▲ +6.2%</div></div>
+        <div class="kpi-card"><div class="kpi-accent" style="background:var(--purple)"></div>
+          <div class="kpi-label">자사몰</div><div class="kpi-value">₩14,300,000<span class="kpi-unit">원</span></div>
+          <div class="kpi-change neutral">→ +0.8%</div></div>
+        <div class="kpi-card"><div class="kpi-accent" style="background:var(--amber)"></div>
+          <div class="kpi-label">외부 채널 합계</div><div class="kpi-value">₩9,500,000<span class="kpi-unit">원</span></div>
+          <div class="kpi-change down">▼ –4.1%</div></div>
+      </div>
+
+      <div class="card" style="margin-bottom:14px">
+        <div class="card-header">
+          <div class="card-title">채널별 매출 상세</div>
+          <div class="filter-tabs">
+            <div class="ftab" onclick="setSalesFilter(this,'일')">일</div><div class="ftab active" onclick="setSalesFilter(this,'주')">주</div><div class="ftab" onclick="setSalesFilter(this,'월')">월</div><div class="ftab" onclick="setSalesFilter(this,'분기')">분기</div><div class="ftab" onclick="setSalesFilter(this,'년')">년</div>
+          </div>
+        </div>
+        <div class="ch-tabs" id="salesChTabs">
+          <div class="ch-tab active" onclick="setSalesChannel(this,'전체')">전체</div>
+          <div class="ch-tab" onclick="setSalesChannel(this,'쿠팡')">쿠팡</div>
+          <div class="ch-tab" onclick="setSalesChannel(this,'스마트스토어')">스마트스토어</div>
+          <div class="ch-tab" onclick="setSalesChannel(this,'자사몰')">자사몰</div>
+          <div class="ch-tab" onclick="setSalesChannel(this,'오늘의집')">오늘의집</div>
+          <div class="ch-tab" onclick="setSalesChannel(this,'지그재그')">지그재그</div>
+          <div class="ch-tab" onclick="setSalesChannel(this,'무신사')">무신사</div>
+          <div class="ch-tab" onclick="setSalesChannel(this,'11번가')">11번가</div>
+          <div class="ch-tab" onclick="setSalesChannel(this,'G마켓')">G마켓</div>
+          <div class="ch-tab" onclick="setSalesChannel(this,'29CM')">29CM</div>
+          <div class="ch-tab" onclick="setSalesChannel(this,'SSG')">SSG</div>
+          <div class="ch-tab" onclick="setSalesChannel(this,'W컨셉')">W컨셉</div>
+          <div class="ch-tab" onclick="setSalesChannel(this,'마켓컬리')">마켓컬리</div>
+          <div class="ch-tab" onclick="setSalesChannel(this,'톡스토어')">톡스토어</div>
+          <div class="ch-tab" onclick="setSalesChannel(this,'아트박스')">아트박스</div>
+          <div class="ch-tab" onclick="setSalesChannel(this,'이지웰')">이지웰</div>
+          <div class="ch-tab" onclick="setSalesChannel(this,'에이블리')">에이블리</div>
+          <div class="ch-tab" onclick="setSalesChannel(this,'에이블리뷰티')">에이블리뷰티</div>
+          <div class="ch-tab" onclick="setSalesChannel(this,'CJ몰')">CJ몰</div>
+          <div class="ch-tab" onclick="setSalesChannel(this,'롯데ON')">롯데ON</div>
+          <div class="ch-tab" onclick="setSalesChannel(this,'홈앤쇼핑')">홈앤쇼핑</div>
+          <div class="ch-tab" onclick="setSalesChannel(this,'카카오선물하기')">선물하기</div>
+          <div class="ch-tab" onclick="setSalesChannel(this,'토스쇼핑')">토스쇼핑</div>
+        </div>
+        <div class="table-wrap">
+          <table id="salesTable">
+            <thead><tr>
+              <th>품목명</th><th>옵션</th><th>SKU</th>
+              <th style="text-align:right">판매수량</th><th style="text-align:right">원가(원)</th>
+              <th style="text-align:right">매출(원)</th><th style="text-align:right">수익(원)</th>
+              <th style="text-align:right">재고</th>
+            </tr></thead>
+            <tbody id="salesBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">재고 현황 (기준일 기준)</div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <input type="date" value="2024-12-14" style="font-size:12px;padding:5px 10px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--t1)">
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th>품목명</th><th>옵션</th><th>SKU</th>
+              <th style="text-align:right">누적 판매</th><th style="text-align:right">원가</th>
+              <th style="text-align:right">현재 재고</th><th style="text-align:right">소진 예상</th><th>상태</th>
+            </tr></thead>
+            <tbody id="stockBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ ADS PAGE ═══ -->
+    <div class="page" id="page-ads">
+      <div class="section-title">광고 성과 대시보드</div>
+      <div class="section-sub">매체별 광고비 대비 전환 매출 및 ROAS 비교. ROAS 130% 미만 항목은 빨간색으로 표시됩니다.</div>
+
+      <div class="grid-4" style="margin-bottom:16px">
+        <div class="kpi-card"><div class="kpi-accent" style="background:var(--blue)"></div>
+          <div class="kpi-label">총 광고비 (주간)</div><div class="kpi-value">₩8,300,000<span class="kpi-unit">원</span></div>
+          <div class="kpi-change down">▼ 전주 대비 +3.2%</div></div>
+        <div class="kpi-card"><div class="kpi-accent" style="background:var(--teal)"></div>
+          <div class="kpi-label">전환 매출 합계</div><div class="kpi-value">₩16,900,000<span class="kpi-unit">원</span></div>
+          <div class="kpi-change up">▲ +7.1%</div></div>
+        <div class="kpi-card"><div class="kpi-accent" style="background:var(--red)"></div>
+          <div class="kpi-label">평균 ROAS</div><div class="kpi-value">124<span class="kpi-unit">%</span></div>
+          <div class="kpi-change down">▼ 기준 미달</div></div>
+        <div class="kpi-card"><div class="kpi-accent" style="background:var(--amber)"></div>
+          <div class="kpi-label">TACOS</div><div class="kpi-value">9.8<span class="kpi-unit">%</span></div>
+          <div class="kpi-change neutral">총매출 대비 광고비율</div></div>
+      </div>
+
+      <div class="grid-2" style="margin-bottom:14px">
+        <div class="card">
+          <div class="card-header"><div class="card-title">매체별 ROAS 비교</div></div>
+          <div style="position:relative;height:240px">
+            <canvas id="roasChart" role="img" aria-label="매체별 ROAS 비교 차트">네이버SA:178 네이버GFA:142 구글:155 메타:119 카카오:131</canvas>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><div class="card-title">광고비 vs 전환매출</div></div>
+          <div style="position:relative;height:240px">
+            <canvas id="spendChart" role="img" aria-label="매체별 광고비 대 전환매출">광고비와 전환매출 비교</canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">매체별 성과 상세</div>
+          <div style="font-size:11px;color:var(--red);font-weight:600">● ROAS 130% 미만 위험</div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th>매체</th><th style="text-align:right">노출수</th><th style="text-align:right">클릭수</th>
+              <th style="text-align:right">광고비(원)</th><th style="text-align:right">전환매출(원)</th>
+              <th style="text-align:right">ROAS</th><th style="text-align:right">CPC</th><th>상태</th>
+            </tr></thead>
+            <tbody id="adsBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ B2B PAGE ═══ -->
+    <div class="page" id="page-b2b">
+      <div class="section-title">B2B / 신규 매출</div>
+      <div class="section-sub">오프라인 영업 파이프라인 및 거래처별 계약 현황을 관리합니다.</div>
+
+      <div class="grid-4" style="margin-bottom:16px">
+        <div class="kpi-card"><div class="kpi-accent" style="background:var(--blue)"></div>
+          <div class="kpi-label">입점 매장 수</div><div class="kpi-value">540<span class="kpi-unit">개소</span></div>
+          <div class="kpi-change up">▲ 전월 대비 +12개소</div></div>
+        <div class="kpi-card"><div class="kpi-accent" style="background:var(--teal)"></div>
+          <div class="kpi-label">이번 주 B2B 매출</div><div class="kpi-value">₩6,200,000<span class="kpi-unit">원</span></div>
+          <div class="kpi-change up">▲ +22.5%</div></div>
+        <div class="kpi-card"><div class="kpi-accent" style="background:var(--amber)"></div>
+          <div class="kpi-label">계약 협의 중</div><div class="kpi-value">3<span class="kpi-unit">건</span></div>
+          <div class="kpi-change neutral">예상 ₩28,000,000원</div></div>
+        <div class="kpi-card"><div class="kpi-accent" style="background:var(--purple)"></div>
+          <div class="kpi-label">VMD 설치 완료</div><div class="kpi-value">312<span class="kpi-unit">개소</span></div>
+          <div class="kpi-change up">▲ 설치율 57.8%</div></div>
+      </div>
+
+      <div class="card" style="margin-bottom:14px">
+        <div class="card-header"><div class="card-title">영업 파이프라인</div><div class="card-sub">거래처별 진행 단계</div></div>
+        <div id="pipelineWrap"></div>
+      </div>
+
+      <div class="card b2b-table-wrap">
+        <div class="card-header"><div class="card-title">거래처별 납품 현황</div></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th>거래처명</th><th>단계</th><th style="text-align:right">초도물량</th>
+              <th style="text-align:right">예상 매출(원)</th><th>예상 납품일</th><th>담당</th>
+            </tr></thead>
+            <tbody id="b2bBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ CX PAGE ═══ -->
+    <div class="page" id="page-cx">
+      <div class="section-title">CX / VOC 관리</div>
+      <div class="section-sub">고객 목소리(VOC) 유형별 통계와 브랜드 서비스 품질을 모니터링합니다.</div>
+
+      <div class="grid-4" style="margin-bottom:16px">
+        <div class="kpi-card"><div class="kpi-accent" style="background:var(--teal)"></div>
+          <div class="kpi-label">CS 만족도</div><div class="kpi-value">4.7<span class="kpi-unit">/5</span></div>
+          <div class="kpi-change up">▲ 굿서비스 유지</div></div>
+        <div class="kpi-card"><div class="kpi-accent" style="background:var(--blue)"></div>
+          <div class="kpi-label">이번 주 VOC 건수</div><div class="kpi-value">48<span class="kpi-unit">건</span></div>
+          <div class="kpi-change down">▼ 전주 대비 +8건</div></div>
+        <div class="kpi-card"><div class="kpi-accent" style="background:var(--amber)"></div>
+          <div class="kpi-label">평균 응대 시간</div><div class="kpi-value">2.3<span class="kpi-unit">시간</span></div>
+          <div class="kpi-change up">▲ 목표 4시간 이내</div></div>
+        <div class="kpi-card"><div class="kpi-accent" style="background:var(--red)"></div>
+          <div class="kpi-label">제품 불량률</div><div class="kpi-value">0.8<span class="kpi-unit">%</span></div>
+          <div class="kpi-change up">▲ 전주 –32% 감소</div></div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-header"><div class="card-title">VOC 유형별 현황</div><div class="card-sub">이번 주</div></div>
+          <div style="display:flex;align-items:center;gap:20px">
+            <div style="position:relative;width:180px;height:180px;flex-shrink:0">
+              <canvas id="vocChart" role="img" aria-label="VOC 유형별 원형 차트">배송지연:35% 제품불량:25% 단순변심:20% 문의:20%</canvas>
+            </div>
+            <div class="voc-legend" id="vocLegend"></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><div class="card-title">채널별 리뷰 평점</div></div>
+          <div style="position:relative;height:200px">
+            <canvas id="reviewChart" role="img" aria-label="채널별 리뷰 평점 비교">쿠팡:4.8 스마트스토어:4.7 자사몰:4.6 지그재그:4.5 무신사:4.3</canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ INVENTORY PAGE ═══ -->
+    <div class="page" id="page-inventory">
+
+      <!-- 타이틀 + 마지막 업데이트 시간 (크게) -->
+      <div style="margin-bottom:16px">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+          <div class="section-title">재고 관리</div>
+          <button onclick="exportInvExcel()" style="display:flex;align-items:center;gap:5px;padding:8px 12px;background:var(--surface);border:1px solid var(--border);color:var(--teal);border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">
+            <svg style="width:13px;height:13px;stroke:var(--teal);fill:none;stroke-width:2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            EXCEL 다운로드
+          </button>
+        </div>
+        <!-- 마지막 업데이트 시간 배너 (항상 표시) -->
+        <div id="invUpdateBanner" style="display:flex;align-items:center;gap:10px;margin-top:10px;padding:12px 16px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;flex-wrap:wrap">
+          <div style="display:flex;align-items:center;gap:7px">
+            <div id="invStatusDot" style="width:8px;height:8px;border-radius:50%;background:var(--t3);flex-shrink:0"></div>
+            <span id="invLastUpdate" style="font-size:13px;font-weight:700;color:var(--t2)">아직 데이터가 없습니다 — 아래 방법으로 업로드해주세요</span>
+          </div>
+          <div id="invUploadedInfo" style="margin-left:auto;font-size:11px;color:var(--t3);display:none">
+            <span id="invSkuCount"></span> · <span id="invWeekCount"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 사용 방법 가이드 (항상 표시) -->
+      <div id="invUploadGuide" style="margin-bottom:16px">
+        <div style="background:linear-gradient(135deg,var(--navy-dark,#001E40) 0%,var(--navy) 60%,#003D7A 100%);border-radius:14px;padding:22px 26px;color:#fff">
+
+          <!-- 제목 -->
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px">
+            <div style="background:rgba(17,202,160,.2);border-radius:8px;padding:6px 10px;font-family:Montserrat,sans-serif;font-size:10px;font-weight:800;color:#11CAA0;letter-spacing:1.5px">사용 방법</div>
+            <div style="font-size:13px;color:rgba(255,255,255,.5)">구글 시트 업데이트 후 아래 순서대로 진행하세요</div>
+          </div>
+
+          <!-- 3단계 스텝 -->
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px">
+            <div style="background:rgba(255,255,255,.07);border-radius:10px;padding:16px">
+              <div style="font-family:Montserrat,sans-serif;font-size:24px;font-weight:800;color:rgba(255,255,255,.15);line-height:1;margin-bottom:8px">01</div>
+              <div style="font-size:13px;font-weight:700;color:#fff;margin-bottom:6px">구글 시트 열기</div>
+              <div style="font-size:11px;color:rgba(255,255,255,.55);line-height:1.6">아래 버튼으로 원본 시트를 여세요</div>
+              <a href="https://docs.google.com/spreadsheets/d/1o8wHNnIHCkLHR6Afp9escrZk_djCsJko_wZvRZFyP98/edit" target="_blank"
+                style="display:inline-flex;align-items:center;gap:5px;margin-top:10px;padding:6px 12px;background:rgba(255,255,255,.12);color:#fff;border-radius:6px;font-size:11px;font-weight:700;text-decoration:none">
+                <svg style="width:11px;height:11px;stroke:#fff;fill:none;stroke-width:2" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                시트 열기 →
+              </a>
+            </div>
+            <div style="background:rgba(255,255,255,.07);border-radius:10px;padding:16px">
+              <div style="font-family:Montserrat,sans-serif;font-size:24px;font-weight:800;color:rgba(255,255,255,.15);line-height:1;margin-bottom:8px">02</div>
+              <div style="font-size:13px;font-weight:700;color:#fff;margin-bottom:6px">CSV로 다운로드</div>
+              <div style="font-size:11px;color:rgba(255,255,255,.55);line-height:1.6">
+                시트 상단 메뉴에서<br>
+                <span style="color:#11CAA0;font-weight:700">파일</span> →
+                <span style="color:#11CAA0;font-weight:700">다운로드</span> →
+                <span style="color:#11CAA0;font-weight:700">CSV</span> 클릭
+              </div>
+            </div>
+            <div style="background:rgba(17,202,160,.15);border:1px solid rgba(17,202,160,.3);border-radius:10px;padding:16px">
+              <div style="font-family:Montserrat,sans-serif;font-size:24px;font-weight:800;color:rgba(17,202,160,.3);line-height:1;margin-bottom:8px">03</div>
+              <div style="font-size:13px;font-weight:700;color:#fff;margin-bottom:6px">여기에 업로드</div>
+              <div style="font-size:11px;color:rgba(255,255,255,.55);line-height:1.6;margin-bottom:10px">다운로드한 파일을 아래 버튼으로 올리면 즉시 반영</div>
+              <label style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;background:#11CAA0;color:#fff;border-radius:7px;font-size:12px;font-weight:800;cursor:pointer">
+                <svg style="width:13px;height:13px;stroke:#fff;fill:none;stroke-width:2.5" viewBox="0 0 24 24"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>
+                파일 업로드
+                <input type="file" id="invManualFile" accept=".csv,.xlsx,.xls" style="display:none" onchange="handleInvManualUpload(event)">
+              </label>
+            </div>
+          </div>
+
+          <!-- 안내 문구 -->
+          <div style="background:rgba(255,255,255,.06);border-radius:8px;padding:10px 14px;font-size:11px;color:rgba(255,255,255,.5);line-height:1.7">
+            💡 <strong style="color:rgba(255,255,255,.7)">수동 업데이트 방식입니다.</strong>
+            구글 시트 담당자가 데이터를 수정한 후, 위 3단계를 따라 파일을 올려야 대시보드에 반영됩니다.
+            마지막 업데이트 시간은 상단에 표시되므로 데이터 최신 여부를 쉽게 확인할 수 있습니다.
+          </div>
+        </div>
+      </div>
+
+      <!-- KPI 카드 (데이터 있을 때) -->
+      <div class="grid-4" style="margin-bottom:16px" id="invKpiArea">
+        <div class="kpi-card"><div class="kpi-accent" style="background:var(--blue)"></div>
+          <div class="kpi-label">총 SKU 수</div>
+          <div class="kpi-value" id="inv-total-sku">--<span class="kpi-unit">개</span></div>
+          <div class="kpi-change neutral" id="inv-total-sub">업로드 대기</div>
+        </div>
+        <div class="kpi-card"><div class="kpi-accent" style="background:var(--teal)"></div>
+          <div class="kpi-label">이번 주 총 판매</div>
+          <div class="kpi-value" id="inv-week-qty">--<span class="kpi-unit">개</span></div>
+          <div class="kpi-change up" id="inv-week-sub">전채널 합계</div>
+        </div>
+        <div class="kpi-card" onclick="setInvFilter('danger')" style="cursor:pointer" onmouseenter="this.style.boxShadow='0 4px 20px rgba(255,75,75,0.2)'" onmouseleave="this.style.boxShadow=''">
+          <div class="kpi-accent" style="background:var(--red)"></div>
+          <div class="kpi-label">판매 없음 SKU <span style="font-size:10px;color:var(--red)">▶ 클릭필터</span></div>
+          <div class="kpi-value" id="inv-zero-qty">--<span class="kpi-unit">개</span></div>
+          <div class="kpi-change down">이번 주 판매 0건</div>
+        </div>
+        <div class="kpi-card"><div class="kpi-accent" style="background:var(--purple)"></div>
+          <div class="kpi-label">활성 채널 수</div>
+          <div class="kpi-value" id="inv-ch-cnt">--<span class="kpi-unit">개</span></div>
+          <div class="kpi-change neutral" id="inv-ch-sub">판매 발생 채널</div>
+        </div>
+      </div>
+
+      <!-- 주차 선택 + 검색 + 필터 -->
+      <div class="card" style="margin-bottom:14px;padding:14px 18px" id="invFilterBar" style="display:none">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <select id="invWeekSelect" onchange="renderInvTable()" style="font-size:12px;padding:7px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--t1);font-family:Montserrat,sans-serif;font-weight:600">
+            <option value="latest">최신 주차</option>
+          </select>
+          <input id="invSearch" type="text" placeholder="품목명 또는 색상 검색..." oninput="renderInvTable()"
+            style="flex:1;min-width:160px;font-size:13px;padding:7px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--t1)">
+          <div style="display:flex;gap:5px">
+            <button onclick="setInvFilter('all')" id="ifAll" style="font-size:11px;padding:5px 12px;border-radius:20px;border:1px solid var(--border);background:var(--navy);color:#fff;cursor:pointer;font-weight:700;font-family:Montserrat,sans-serif">전체</button>
+            <button onclick="setInvFilter('active')" id="ifActive" style="font-size:11px;padding:5px 12px;border-radius:20px;border:1px solid var(--border);background:var(--surface);color:var(--t3);cursor:pointer;font-weight:700;font-family:Montserrat,sans-serif">판매있음</button>
+            <button onclick="setInvFilter('danger')" id="ifDanger" style="font-size:11px;padding:5px 12px;border-radius:20px;border:1px solid var(--border);background:var(--surface);color:var(--t3);cursor:pointer;font-weight:700;font-family:Montserrat,sans-serif">판매없음</button>
+            <button onclick="document.getElementById('invManualFile2').click()" style="font-size:11px;padding:5px 12px;border-radius:20px;border:1px solid var(--teal);background:var(--surface);color:var(--teal);cursor:pointer;font-weight:700;font-family:Montserrat,sans-serif">
+              ↑ 재업로드
+            </button>
+            <input type="file" id="invManualFile2" accept=".csv,.xlsx,.xls" style="display:none" onchange="handleInvManualUpload(event)">
+          </div>
+        </div>
+      </div>
+
+      <!-- 테이블 -->
+      <div class="card" id="invTableCard" style="display:none">
+        <div class="table-wrap" id="invTableWrap">
+          <table id="invTable">
+            <thead id="invThead"></thead>
+            <tbody id="invTbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 초기 빈 상태 -->
+      <div id="invLoadingMsg" style="display:none;text-align:center;padding:40px;color:var(--t3)">
+        <div style="font-size:14px;font-weight:600;color:var(--t2);margin-bottom:6px">불러오는 중...</div>
+      </div>
+    </div>
+
+    <!-- ═══ ASSETS PAGE ═══ -->
+    <div class="page" id="page-assets">
+      <div class="section-title">디자인 에셋 라이브러리</div>
+      <div class="section-sub">SKU별 / 채널별 디자인 파일을 관리합니다. 마우스를 올리면 빠른 작업 버튼이 나타납니다.</div>
+      <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+        <select style="font-size:12px;padding:7px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--t1)">
+          <option>전체 상품군</option><option>넥밴드 선풍기</option><option>스마트 무드등</option><option>미니 청소기</option>
+        </select>
+        <div class="ch-tab active" style="border-radius:8px">전체</div>
+        <div class="ch-tab" style="border-radius:8px">상세페이지</div>
+        <div class="ch-tab" style="border-radius:8px">썸네일</div>
+        <div class="ch-tab" style="border-radius:8px">배너</div>
+        <div class="ch-tab" style="border-radius:8px">SNS 소재</div>
+      </div>
+      <div class="asset-grid" id="assetGrid"></div>
+    </div>
+
+    <!-- ═══ UPLOAD PAGE ═══ -->
+    <div class="page" id="page-upload">
+      <div class="section-title">데이터 업로드 센터</div>
+      <div class="section-sub">각 채널에서 다운로드한 정산 원본 파일을 수정 없이 그대로 업로드하세요. 스마트 매핑이 자동으로 처리합니다.</div>
+
+      <div class="grid-2" style="margin-bottom:20px">
+        <div class="card">
+          <div class="card-header"><div class="card-title">📊 매출 데이터 업로드</div></div>
+          <div class="upload-zone" id="salesUpload" onclick="document.getElementById('salesFile').click()"
+               ondragover="event.preventDefault();this.classList.add('drag')"
+               ondragleave="this.classList.remove('drag')"
+               ondrop="handleDrop(event,'sales')">
+            <svg viewBox="0 0 24 24"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>
+            <p>파일을 드래그하거나 클릭하여 업로드</p>
+            <span>.xlsx, .xls, .csv 지원 — 채널 원본 파일 그대로 사용 가능</span>
+          </div>
+          <input type="file" id="salesFile" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleFileUpload(event,'sales')">
+        </div>
+        <div class="card">
+          <div class="card-header"><div class="card-title">📢 광고 데이터 업로드</div></div>
+          <div class="upload-zone" onclick="document.getElementById('adsFile').click()"
+               ondragover="event.preventDefault();this.classList.add('drag')"
+               ondragleave="this.classList.remove('drag')"
+               ondrop="handleDrop(event,'ads')">
+            <svg viewBox="0 0 24 24"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>
+            <p>광고 성과 리포트 업로드</p>
+            <span>네이버·메타·구글 원본 엑셀 파일</span>
+          </div>
+          <input type="file" id="adsFile" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleFileUpload(event,'ads')">
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><div class="card-title">업로드 히스토리</div></div>
+        <div id="uploadHistory">
+          <div class="upload-file-item">
+            <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            <div class="file-name">쿠팡_정산내역_2024_W49.xlsx</div>
+            <div class="file-meta">2.3 MB · 2024.12.07</div>
+            <div class="file-status">처리 완료</div>
+          </div>
+          <div class="upload-file-item">
+            <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            <div class="file-name">메타_광고보고서_2024_W49.xlsx</div>
+            <div class="file-meta">1.1 MB · 2024.12.07</div>
+            <div class="file-status">처리 완료</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /main -->
+</div><!-- /app -->
+
+<!-- ── FLOATING BANNER ── -->
+<div class="float-banner" id="floatBanner">
+  <div class="fb-header">
+    <div class="fb-title"><div class="pulse" style="background:var(--red)"></div>본부장님 의사결정 필요</div>
+    <div class="fb-close" onclick="document.getElementById('floatBanner').classList.add('hidden')">×</div>
+  </div>
+  <div class="fb-item"><div class="fb-num">1</div>넥밴드선풍기 S — 재고 5일치, 추가 발주 승인</div>
+  <div class="fb-item"><div class="fb-num">2</div>메타 광고 소재 교체 승인 요청</div>
+  <div class="fb-item"><div class="fb-num">3</div>온라인팜 B2B 계약 최종 검토</div>
+</div>
+
+<script>
+// ── DARK MODE ──
+let isDark = false;
+function toggleDark(){
+  isDark = !isDark;
+  document.documentElement.setAttribute('data-theme', isDark ? 'dark' : '');
+  document.getElementById('darkToggle').classList.toggle('on', isDark);
+  redrawCharts();
+}
+function getColor(){ return isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,45,94,0.07)'; }
+function getTextColor(){ return isDark ? '#7A90A8' : '#8A9BB0'; }
+
+// ── NAVIGATION ──
+let currentPage = 'home';
+function showPage(id, el){
+  currentPage = id;
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  if(el) el.classList.add('active');
+  const titles = {home:'종합 대시보드',sales:'이커머스 매출 관리',ads:'광고 성과 대시보드',b2b:'B2B / 신규 매출',cx:'CX / VOC 관리',inventory:'재고 관리',assets:'디자인 에셋 라이브러리',upload:'데이터 업로드 센터'};
+  document.getElementById('pageTitle').textContent = titles[id] || '';
+  if(id==='ads') setTimeout(()=>{drawAdsCharts();},50);
+  if(id==='cx') setTimeout(()=>{drawCxCharts();},50);
+  if(id==='inventory' && invRawData.length===0) setTimeout(()=>{loadInventoryFromSheet();},100);
+}
+
+function toggleSidebar(){
+  document.getElementById('sidebar').classList.toggle('collapsed');
+}
+
+// ── CHART INSTANCES ──
+let homeChartInst = null, roasChartInst = null, spendChartInst = null, vocChartInst = null, reviewChartInst = null;
+
+function redrawCharts(){
+  [homeChartInst,roasChartInst,spendChartInst,vocChartInst,reviewChartInst].forEach(c=>{if(c)c.destroy()});
+  drawHomeChart(); drawAdsCharts(); drawCxCharts();
+}
+
+// ── HOME CHART ──
+// ── 현재 주차 날짜 범위 계산 ──
+function getWeekRange(){
+  const now=new Date();
+  const day=now.getDay();
+  const diffToMon=(day===0?-6:1-day);
+  const mon=new Date(now);mon.setDate(now.getDate()+diffToMon);
+  const sun=new Date(mon);sun.setDate(mon.getDate()+6);
+  const fmt=d=>`${d.getMonth()+1}.${String(d.getDate()).padStart(2,'0')}`;
+  const startOfYear=new Date(now.getFullYear(),0,1);
+  const weekNum=Math.ceil((((now-startOfYear)/86400000)+1)/7);
+  const daysInMonth=new Date(now.getFullYear(),now.getMonth()+1,0).getDate();
+  const daysLeft=daysInMonth-now.getDate();
+  return{label:`${now.getFullYear()}년 ${now.getMonth()+1}월 ${weekNum}주차 (${fmt(mon)} - ${fmt(sun)})`,daysLeft};
+}
+// ── 원 단위 포맷 (읽기 쉽게) ──
+function fmtWon(won){
+  const w = Math.round(won);
+  if(w >= 100000000) return (w/100000000).toFixed(1).replace(/\.0$/,'') + '억';
+  if(w >= 10000000)  return Math.round(w/10000000) + '천' + (Math.round((w%10000000)/1000000)>0 ? Math.round((w%10000000)/1000000)+'백만' : '만원');
+  if(w >= 10000)     return Math.round(w/10000).toLocaleString() + '만원';
+  return w.toLocaleString() + '원';
+}
+function fmtWonFull(won){ return '₩' + Math.round(won).toLocaleString() + '원'; }
+function drawHomeChart(){
+  const ctx=document.getElementById('homeChart');
+  if(!ctx)return;
+  if(homeChartInst)homeChartInst.destroy();
+  const rawData=[62000,58000,71000,67000,75000,69000,76000,84700];
+  homeChartInst=new Chart(ctx,{
+    type:'line',
+    data:{
+      labels:['W43','W44','W45','W46','W47','W48','W49','W50'],
+      datasets:[{
+        label:'매출(원)',data:rawData,
+        borderColor:'#007AFF',backgroundColor:'rgba(0,122,255,0.08)',
+        borderWidth:2.5,pointBackgroundColor:'#007AFF',pointRadius:4,
+        pointHoverRadius:6,fill:true,tension:.4
+      }]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:v=>'₩'+Math.round(v.raw).toLocaleString()+'원'}}},
+      scales:{
+        x:{grid:{color:getColor()},ticks:{color:getTextColor(),font:{size:11,family:'Montserrat'}}},
+        y:{grid:{color:getColor()},ticks:{color:getTextColor(),font:{size:11,family:'Montserrat'},callback:v=>'₩'+fmtWon(v)},min:50000000,max:95000000}
+      }
+    }
+  });
+}
+
+// ── ADS CHARTS ──
+function drawAdsCharts(){
+  const c1=document.getElementById('roasChart'), c2=document.getElementById('spendChart');
+  if(!c1||!c2) return;
+  if(roasChartInst) roasChartInst.destroy();
+  if(spendChartInst) spendChartInst.destroy();
+  const media=['네이버 SA','네이버 GFA','구글','메타','카카오'];
+  const roas=[178,142,155,119,131];
+  const colors=roas.map(v=>v<130?'rgba(255,75,75,0.85)':'rgba(0,122,255,0.8)');
+  roasChartInst = new Chart(c1,{
+    type:'bar',
+    data:{labels:media,datasets:[{label:'ROAS(%)',data:roas,backgroundColor:colors,borderRadius:6,borderSkipped:false}]},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},annotation:{annotations:{line1:{type:'line',yMin:130,yMax:130,borderColor:'rgba(255,75,75,0.6)',borderWidth:1.5,borderDash:[4,4]}}}},
+      scales:{
+        x:{grid:{color:getColor()},ticks:{color:getTextColor(),font:{size:11}}},
+        y:{grid:{color:getColor()},ticks:{color:getTextColor(),font:{size:11},callback:v=>v+'%'},min:90,max:200}
+      }
+    }
+  });
+  spendChartInst = new Chart(c2,{
+    type:'bar',
+    data:{
+      labels:media,
+      datasets:[
+        {label:'광고비(원)',data:[2100000,1400000,1800000,1900000,1100000],backgroundColor:'rgba(0,45,94,0.6)',borderRadius:4,borderSkipped:false},
+        {label:'전환매출(원)',data:[3740000,1990000,2790000,2260000,1440000],backgroundColor:'rgba(17,202,160,0.7)',borderRadius:4,borderSkipped:false}
+      ]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{
+        x:{grid:{color:getColor()},ticks:{color:getTextColor(),font:{size:11}}},
+        y:{grid:{color:getColor()},ticks:{color:getTextColor(),font:{size:11},callback:v=>'₩'+fmtWon(v)}}
+      }
+    }
+  });
+}
+
+// ── CX CHARTS ──
+function drawCxCharts(){
+  const c1=document.getElementById('vocChart'), c2=document.getElementById('reviewChart');
+  if(!c1||!c2) return;
+  if(vocChartInst) vocChartInst.destroy();
+  if(reviewChartInst) reviewChartInst.destroy();
+  const vocData=[{label:'배송 지연',val:35,color:'#FF4B4B'},{label:'제품 불량',val:25,color:'#F5A623'},{label:'단순 변심',val:20,color:'#007AFF'},{label:'문의/기타',val:20,color:'#11CAA0'}];
+  vocChartInst = new Chart(c1,{
+    type:'doughnut',
+    data:{labels:vocData.map(d=>d.label),datasets:[{data:vocData.map(d=>d.val),backgroundColor:vocData.map(d=>d.color),borderWidth:0,hoverOffset:4}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'72%',plugins:{legend:{display:false}}}
+  });
+  const legend=document.getElementById('vocLegend');
+  if(legend){
+    legend.innerHTML=vocData.map(d=>`<div class="voc-item"><div class="voc-dot" style="background:${d.color}"></div>${d.label}<span class="voc-pct">${d.val}%</span></div>`).join('');
+  }
+  reviewChartInst = new Chart(c2,{
+    type:'bar',
+    data:{
+      labels:['쿠팡','스스','자사몰','지그재그','무신사'],
+      datasets:[{label:'평점',data:[4.8,4.7,4.6,4.5,4.3],backgroundColor:'rgba(0,122,255,0.7)',borderRadius:6,borderSkipped:false}]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{
+        x:{grid:{color:getColor()},ticks:{color:getTextColor(),font:{size:11}}},
+        y:{grid:{color:getColor()},ticks:{color:getTextColor(),font:{size:11}},min:4,max:5}
+      }
+    }
+  });
+}
+
+// ── HEATMAP ──
+function buildHeatmap(id){
+  // 멜리언스 전체 22개 이커머스 채널
+  const channels=[
+    {n:'쿠팡',v:100},{n:'스스',v:82},{n:'자사몰',v:61},{n:'오늘의집',v:45},
+    {n:'지그재그',v:38},{n:'무신사',v:31},{n:'11번가',v:27},{n:'G마켓',v:24},
+    {n:'29CM',v:21},{n:'SSG',v:18},{n:'W컨셉',v:14},{n:'마켓컬리',v:11},
+    {n:'톡스토어',v:10},{n:'아트박스',v:9},{n:'이지웰',v:8},{n:'에이블리',v:7},
+    {n:'에이블리뷰',v:6},{n:'CJ몰',v:6},{n:'롯데ON',v:5},{n:'홈앤쇼핑',v:4},
+    {n:'선물하기',v:4},{n:'토스쇼핑',v:3}
+  ];
+  const el=document.getElementById(id);
+  if(!el)return;
+  // 22채널용 5열 그리드
+  el.style.gridTemplateColumns='repeat(5,1fr)';
+  el.innerHTML=channels.map(c=>{
+    const op=0.12+(c.v/100)*0.78;
+    const bg=`rgba(0,122,255,${op.toFixed(2)})`;
+    const tc=c.v>50?'#fff':isDark?'#7EC8FF':'#003D7A';
+    const chName = c.n==="스스"?"스마트스토어":c.n==="에이블리뷰"?"에이블리뷰티":c.n==="선물하기"?"카카오선물하기":c.n;
+    return `<div class="hcell" style="background:${bg};color:${tc};font-size:9px;padding:5px 2px;cursor:pointer" title="${c.n} 클릭 → 채널 상세 보기" onclick="goToChannel('${chName}')">${c.n}<br><span style="font-size:8px;opacity:.8">${c.v}%</span></div>`;
+  }).join('');
+}
+
+
+// ── 히트맵 클릭 → 이커머스 채널 이동 ──
+function goToChannel(channelName){
+  // 이커머스 매출 페이지로 이동
+  const navItem = document.querySelectorAll('.nav-item')[1]; // 이커머스 매출 메뉴
+  showPage('sales', navItem);
+  // 채널 탭 선택
+  setTimeout(()=>{ setSalesChannelByName(channelName); }, 100);
+}
+
+function setSalesChannelByName(channelName){
+  const tabs = document.querySelectorAll('#salesChTabs .ch-tab');
+  let found = false;
+  tabs.forEach(t=>{
+    const match = t.getAttribute('onclick')?.includes(`'${channelName}'`) ||
+                  t.textContent.trim() === channelName ||
+                  (channelName==='스마트스토어' && t.textContent.trim()==='스마트스토어');
+    t.classList.toggle('active', match);
+    if(match){ found = true; filterSalesByChannel(channelName); }
+  });
+  if(!found){ // 매칭 안 되면 전체로
+    tabs[0]?.classList.add('active');
+    filterSalesByChannel('전체');
+  }
+}
+
+// ── 현재 필터 상태 ──
+let currentSalesPeriod = '주';
+let currentSalesChannel = '전체';
+
+// ── 기간 필터 데이터 (배율로 시뮬레이션) ──
+const periodMultipliers = {};
+periodMultipliers['일'] = 0.143;
+periodMultipliers['주'] = 1;
+periodMultipliers['월'] = 4.3;
+periodMultipliers['분기'] = 13;
+periodMultipliers['년'] = 52;
+const periodLabels = {
+  '일':  ['월','화','수','목','금','토','일'],
+  '주':  ['W43','W44','W45','W46','W47','W48','W49','W50'],
+  '월':  ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'],
+  '분기':['Q1 2024','Q2 2024','Q3 2024','Q4 2024'],
+  '년':  ['2021','2022','2023','2024'],
+};
+const periodBaseData = {
+  '일':  [11200,9800,13400,12100,14200,10800,9000],
+  '주':  [62000,58000,71000,67000,75000,69000,76000,84700],
+  '월':  [210000,195000,280000,265000,310000,290000,320000,298000,275000,330000,315000,340000],
+  '분기':[650000,820000,890000,950000],
+  '년':  [1800000,2400000,3100000,3800000],
+};
+
+// ── 홈 차트 기간 필터 ──
+function setHomeFilter(el, period){
+  document.querySelectorAll('.card-header .filter-tabs .ftab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  currentSalesPeriod = period;
+  if(!homeChartInst) return;
+  const labels = periodLabels[period] || periodLabels['주'];
+  const data   = periodBaseData[period] || periodBaseData['주'];
+  homeChartInst.data.labels = labels;
+  homeChartInst.data.datasets[0].data = data;
+  const mn = Math.min(...data)*0.93;
+  const mx = Math.max(...data)*1.07;
+  homeChartInst.options.scales.y.min = Math.round(mn*0.93);
+  homeChartInst.options.scales.y.max = Math.round(mx*1.07);
+  homeChartInst.update();
+}
+
+// ── 이커머스 매출 기간 필터 ──
+function setSalesFilter(el, period){
+  document.querySelectorAll('#page-sales .filter-tabs .ftab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  currentSalesPeriod = period;
+  const mult = periodMultipliers[period] || 1;
+  // 기간에 따라 데이터 스케일 조정
+  const scaled = salesData.map(r=>({
+    ...r,
+    qty:    Math.round(r.qty * mult),
+    rev:    Math.round(r.rev * mult),
+    margin: Math.round(r.margin * mult),
+  }));
+  renderSalesTable(scaled, currentSalesChannel);
+  showToast(`📅 ${period} 기준 데이터로 표시 중`);
+}
+
+// ── 이커머스 채널 탭 필터 ──
+function setSalesChannel(el, channel){
+  document.querySelectorAll('#salesChTabs .ch-tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  currentSalesChannel = channel;
+  filterSalesByChannel(channel);
+}
+
+function filterSalesByChannel(channel){
+  const data = uploadedSalesData.length ? uploadedSalesData : salesData;
+  const mult = periodMultipliers[currentSalesPeriod] || 1;
+  let filtered = channel==='전체' ? data : data.filter(r=>{
+    const ch = (r.channel||'').trim();
+    if(channel==='스마트스토어') return ch==='스마트스토어'||ch==='스스'||ch.includes('smartstore');
+    return ch===channel || ch.toLowerCase()===channel.toLowerCase();
+  });
+  // 데이터가 없으면 데모 데이터 전체 표시 (채널 미분류)
+  if(filtered.length===0 && uploadedSalesData.length===0) filtered = data;
+  const scaled = filtered.map(r=>({...r, qty:Math.round(r.qty*mult), rev:Math.round(r.rev*mult), margin:Math.round(r.margin*mult)}));
+  renderSalesTable(scaled, channel);
+  // 채널명 헤더 표시
+  const title = document.querySelector('#page-sales .card-title');
+  if(title) title.textContent = channel==='전체' ? '채널별 매출 상세' : `${channel} 채널 매출 상세`;
+  showToast(`${channel} 채널 ${scaled.length}개 SKU`);
+}
+
+// ── 테이블 렌더 (필터 적용 버전) ──
+function renderSalesTable(data, channel){
+  const tb = document.getElementById('salesBody');
+  if(!tb) return;
+  if(data.length===0){
+    tb.innerHTML=`<tr><td colspan="8" style="padding:24px;text-align:center;color:var(--t3)">해당 채널 데이터가 없습니다.<br><span style="font-size:11px">엑셀 업로드 후 채널이 자동 인식됩니다.</span></td></tr>`;
+    return;
+  }
+  tb.innerHTML = data.map(r=>{
+    const danger=r.stock>0&&r.stock<100;
+    const stockPct=Math.min(100,(r.stock||0)/5);
+    const chBadge = r.channel ? `<span style="font-size:9px;padding:2px 5px;border-radius:4px;background:rgba(0,122,255,0.1);color:var(--blue);font-family:Montserrat,sans-serif;margin-left:4px">${r.channel}</span>` : '';
+    return `<tr>
+      <td class="td-name">${r.name}${channel==='전체'?chBadge:''}</td>
+      <td>${r.opt}</td>
+      <td class="td-sku">${r.sku}</td>
+      <td class="td-right">${r.qty.toLocaleString()}</td>
+      <td class="td-right" style="font-size:11px">₩${r.cost.toLocaleString()}원</td>
+      <td class="td-right">₩${Math.round(r.rev).toLocaleString()}원</td>
+      <td class="td-right ${r.margin>1500000?'td-ok':''}">₩${Math.round(r.margin).toLocaleString()}원</td>
+      <td><div class="stock-bar"><div class="stock-mini"><div class="stock-mini-fill" style="width:${stockPct}%;background:${danger?'#FF4B4B':'#11CAA0'}"></div></div><span class="${danger?'td-danger':''}">${r.stock||'-'}</span></div></td>
+    </tr>`;
+  }).join('');
+}
+
+// ── 목표 설정 ──
+let goals={rev:350000000,margin:95000000,b2b:30000000,roas:130};
+function loadGoals(){
+  try{const s=localStorage.getItem('meliens_goals');if(s){const g=JSON.parse(s);Object.assign(goals,g);}}catch(e){}
+}
+function toggleGoalEdit(){
+  const f=document.getElementById('goalForm');
+  const btn=document.getElementById('goalEditBtn');
+  const show=f.style.display==='none';
+  f.style.display=show?'block':'none';
+  btn.textContent=show?'닫기':'목표 설정';
+  if(show){
+    document.getElementById('g-rev').value=goals.rev||'';
+    document.getElementById('g-margin').value=goals.margin||'';
+    document.getElementById('g-b2b').value=goals.b2b||'';
+    document.getElementById('g-roas').value=goals.roas||'';
+  }
+}
+function saveGoals(){
+  goals.rev=parseInt(document.getElementById('g-rev').value)||350000;
+  goals.margin=parseInt(document.getElementById('g-margin').value)||95000;
+  goals.b2b=parseInt(document.getElementById('g-b2b').value)||30000;
+  goals.roas=parseInt(document.getElementById('g-roas').value)||130;
+  try{localStorage.setItem('meliens_goals',JSON.stringify(goals));}catch(e){}
+  toggleGoalEdit();
+  renderGoalBars();
+  showToast('✅ 월간 목표가 저장되었습니다');
+}
+function renderGoalBars(){
+  const data=uploadedSalesData.length?uploadedSalesData:salesData;
+  const currentRev=Math.round(data.reduce((s,r)=>s+r.rev,0));
+  const currentMargin=Math.round(data.reduce((s,r)=>s+r.margin,0));
+  const currentB2b=6200; // 실제 연동 시 B2B 데이터로 교체
+  const currentRoas=124;
+  const items=[
+    {label:'총 매출 목표',cur:currentRev,goal:goals.rev,color:'var(--blue)',unit:'원'},
+    {label:'공헌이익 목표',cur:currentMargin,goal:goals.margin,color:'var(--teal)',unit:'원'},
+    {label:'신규 B2B',cur:currentB2b,goal:goals.b2b,color:'var(--amber)',unit:'원'},
+    {label:'ROAS 목표',cur:currentRoas,goal:goals.roas,color:currentRoas<goals.roas?'var(--red)':'var(--teal)',unit:'%'},
+  ];
+  const bars=document.getElementById('goalBars');
+  if(!bars)return;
+  bars.innerHTML=items.map(it=>{
+    const pct=it.goal>0?Math.min(100,Math.round((it.cur/it.goal)*100)):0;
+    return`<div class="prog-row">
+      <div class="prog-meta">
+        <span class="prog-label">${it.label} <span style="color:var(--t3);font-size:10px">/ ${it.goal.toLocaleString()}${it.unit}</span></span>
+        <span class="prog-pct" style="color:${it.color}">${pct}%</span>
+      </div>
+      <div class="prog-track"><div class="prog-fill" style="width:${pct}%;background:${it.color}"></div></div>
+    </div>`;
+  }).join('');
+  // 런레이트 계산
+  const wr=getWeekRange();
+  const dl=wr.daysLeft;
+  const remaining=Math.max(0,goals.rev-currentRev);
+  const daily=dl>0?Math.round(remaining/dl):0;
+  const dlEl=document.getElementById('daysLeft');
+  const dnEl=document.getElementById('dailyNeed');
+  if(dlEl)dlEl.textContent=dl;
+  if(dnEl)dnEl.textContent="₩"+daily.toLocaleString()+"원";
+}
+
+// ── 품절임박 모달 ──
+function showLowStockModal(){
+  const data=uploadedSalesData.length?uploadedSalesData:salesData;
+  const low=data.filter(r=>r.stock>0&&r.stock<100).sort((a,b)=>a.stock-b.stock);
+  const existing=document.getElementById('lowStockModal');
+  if(existing)existing.remove();
+  const rows=low.length>0?low.map(r=>{
+    const daily=r.qty>0?((r.qty/7)):1;
+    const days=Math.floor(r.stock/daily);
+    const cls=days<=3?'#FF4B4B':days<=7?'#F5A623':'#11CAA0';
+    return`<tr>
+      <td style="padding:10px 12px;font-weight:700;color:var(--t1)">${r.name}</td>
+      <td style="padding:10px 12px;color:var(--t2)">${r.opt}</td>
+      <td style="padding:10px 12px;font-family:Montserrat,sans-serif;font-weight:700;color:var(--t3)">${r.sku}</td>
+      <td style="padding:10px 12px;text-align:right;font-weight:700;color:${cls}">${r.stock}개</td>
+      <td style="padding:10px 12px;text-align:right;font-weight:700;color:${cls}">${days}일</td>
+      <td style="padding:10px 12px;text-align:center"><span style="font-size:10px;padding:3px 8px;border-radius:5px;font-weight:700;font-family:Montserrat;background:${days<=7?'rgba(255,75,75,0.1)':'rgba(245,166,35,0.1)'};color:${days<=7?'#FF4B4B':'#F5A623'}">${days<=7?'즉시발주':'주의'}</span></td>
+    </tr>`;
+  }).join(''):`<tr><td colspan="6" style="padding:24px;text-align:center;color:var(--t3)">품절 임박 상품이 없습니다 ✅</td></tr>`;
+  const modal=document.createElement('div');
+  modal.id='lowStockModal';
+  modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px';
+  modal.innerHTML=`<div style="background:var(--surface);border-radius:16px;width:100%;max-width:640px;max-height:80vh;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.3)">
+    <div style="padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <div style="font-size:16px;font-weight:800;color:var(--t1)">⚠️ 품절 임박 SKU</div>
+        <div style="font-size:12px;color:var(--t3);margin-top:2px">재고 100개 미만 상품 목록</div>
+      </div>
+      <button onclick="document.getElementById('lowStockModal').remove()" style="width:32px;height:32px;border-radius:50%;background:var(--surface2);border:1px solid var(--border);color:var(--t2);font-size:16px;cursor:pointer">×</button>
+    </div>
+    <div style="overflow-y:auto;max-height:calc(80vh - 80px)">
+      <table style="width:100%;border-collapse:collapse;font-size:13px">
+        <thead><tr style="background:var(--surface2)">
+          <th style="padding:10px 12px;text-align:left;font-size:11px;color:var(--t3);font-family:Montserrat,sans-serif;border-bottom:1px solid var(--border)">품목명</th>
+          <th style="padding:10px 12px;text-align:left;font-size:11px;color:var(--t3);font-family:Montserrat,sans-serif;border-bottom:1px solid var(--border)">옵션</th>
+          <th style="padding:10px 12px;text-align:left;font-size:11px;color:var(--t3);font-family:Montserrat,sans-serif;border-bottom:1px solid var(--border)">SKU</th>
+          <th style="padding:10px 12px;text-align:right;font-size:11px;color:var(--t3);font-family:Montserrat,sans-serif;border-bottom:1px solid var(--border)">현재고</th>
+          <th style="padding:10px 12px;text-align:right;font-size:11px;color:var(--t3);font-family:Montserrat,sans-serif;border-bottom:1px solid var(--border)">소진예상</th>
+          <th style="padding:10px 12px;text-align:center;font-size:11px;color:var(--t3);font-family:Montserrat,sans-serif;border-bottom:1px solid var(--border)">상태</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+    <div style="padding:14px 24px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px">
+      <button onclick="showPage('sales',document.querySelectorAll('.nav-item')[1]);document.getElementById('lowStockModal').remove()" style="padding:9px 18px;background:var(--navy);color:#fff;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;border:none">재고 현황 보기 →</button>
+    </div>
+  </div>`;
+  document.body.appendChild(modal);
+}
+
+// ── TABLES ──
+const salesData=[
+  {name:'넥밴드 선풍기',opt:'화이트/S',sku:'NF-W-S',qty:412,cost:12000,rev:6180000,margin:2244000,stock:67},
+  {name:'넥밴드 선풍기',opt:'블랙/M',sku:'NF-B-M',qty:387,cost:12000,rev:5805000,margin:2108000,stock:145},
+  {name:'스마트 무드등',opt:'베이지',sku:'SM-BG',qty:256,cost:18500,rev:5888000,margin:1149000,stock:203},
+  {name:'미니 청소기',opt:'화이트',sku:'MC-W',qty:198,cost:22000,rev:5742000,margin:1392000,stock:88},
+  {name:'미니 청소기',opt:'블랙',sku:'MC-B',qty:174,cost:22000,rev:5046000,margin:1224000,stock:321},
+  {name:'아로마 디퓨저',opt:'우드',sku:'AD-WD',qty:143,cost:8500,rev:2288000,margin:1073000,stock:512},
+];
+function buildSalesTable(){
+  const data = uploadedSalesData.length ? uploadedSalesData : salesData;
+  renderSalesTable(data, currentSalesChannel);
+}
+function buildStockTable(){
+  const tb=document.getElementById('stockBody');
+  if(!tb) return;
+  const stock=salesData.map(r=>({...r,cumSales:r.qty*3,daysLeft:Math.floor(r.stock/(((r.qty/7))||1))}));
+  tb.innerHTML=stock.map(r=>{
+    const d=r.daysLeft; const cls=d<=7?'td-danger':d<=14?'':'td-ok';
+    return `<tr>
+      <td class="td-name">${r.name}</td><td>${r.opt}</td><td class="td-sku">${r.sku}</td>
+      <td class="td-right">${r.cumSales.toLocaleString()}</td>
+      <td class="td-right" style="font-size:11px">₩${r.cost.toLocaleString()}원</td>
+      <td class="td-right ${r.stock<100?'td-danger':''}">${r.stock}</td>
+      <td class="td-right ${cls}">${d}일 후</td>
+      <td><span style="font-size:10px;padding:3px 8px;border-radius:5px;font-weight:700;font-family:Montserrat;background:${d<=7?'rgba(255,75,75,0.1)':d<=14?'rgba(245,166,35,0.1)':'rgba(17,202,160,0.1)'};color:${d<=7?'#FF4B4B':d<=14?'#F5A623':'#11CAA0'}">${d<=7?'발주필요':d<=14?'주의':'정상'}</span></td>
+    </tr>`;
+  }).join('');
+}
+function buildAdsTable(){
+  const tb=document.getElementById('adsBody');
+  if(!tb) return;
+  const ads=[
+    {media:'네이버 SA',imp:245000,click:4900,spend:2100000,rev:3738000,roas:178,cpc:429},
+    {media:'네이버 GFA',imp:890000,click:2670,spend:1400000,rev:1988000,roas:142,cpc:524},
+    {media:'구글 애즈',imp:412000,click:3296,spend:1800000,rev:2790000,roas:155,cpc:546},
+    {media:'메타 (인스타)',imp:1240000,click:4960,spend:1900000,rev:2261000,roas:119,cpc:383},
+    {media:'카카오 모먼트',imp:380000,click:1900,spend:1100000,rev:1441000,roas:131,cpc:579},
+  ];
+  tb.innerHTML=ads.map(r=>{
+    const danger=r.roas<130;
+    return `<tr>
+      <td class="td-name">${r.media}</td>
+      <td class="td-right">${r.imp.toLocaleString()}</td>
+      <td class="td-right">${r.click.toLocaleString()}</td>
+      <td class="td-right">₩${Math.round(r.spend).toLocaleString()}원</td>
+      <td class="td-right">₩${Math.round(r.rev).toLocaleString()}원</td>
+      <td class="td-right ${danger?'td-danger':'td-ok'}">${r.roas}%</td>
+      <td class="td-right">₩${r.cpc.toLocaleString()}원</td>
+      <td><span style="font-size:10px;padding:3px 8px;border-radius:5px;font-weight:700;font-family:Montserrat;background:${danger?'rgba(255,75,75,0.1)':'rgba(17,202,160,0.1)'};color:${danger?'#FF4B4B':'#11CAA0'}">${danger?'⚠ 기준미달':'정상'}</span></td>
+    </tr>`;
+  }).join('');
+}
+function buildB2B(){
+  const tb=document.getElementById('b2bBody'), pw=document.getElementById('pipelineWrap');
+  const deals=[
+    {name:'온라인팜',stage:'계약 검토',stageN:2,qty:3200,rev:12000000,date:'2024.12.20',owner:'김팀장'},
+    {name:'헬스&뷰티 B2B',stage:'견적 조율',stageN:1,qty:1500,rev:5625000,date:'2025.01.10',owner:'이대리'},
+    {name:'기업 복지몰',stage:'제안 중',stageN:0,qty:800,rev:3000000,date:'2025.01.25',owner:'박사원'},
+    {name:'롯데ON MD',stage:'계약 완료',stageN:3,qty:5000,rev:18750000,date:'2024.12.15',owner:'김팀장'},
+  ];
+  const stages=['제안 중','견적 조율','계약 검토','계약 완료','초도 출고'];
+  const stageColors=['#8A9BB0','#F5A623','#007AFF','#11CAA0','#6C5CE7'];
+  if(pw) pw.innerHTML=deals.map(d=>`
+    <div style="margin-bottom:16px">
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+        <span style="font-size:13px;font-weight:700;color:var(--t1)">${d.name}</span>
+        <span style="font-size:11px;color:${stageColors[d.stageN]};font-weight:700;font-family:Montserrat">${d.stage}</span>
+      </div>
+      <div style="display:flex;gap:2px">
+        ${stages.map((s,i)=>`<div style="flex:1;height:6px;border-radius:${i===0?'4px 0 0 4px':i===stages.length-1?'0 4px 4px 0':'0'};background:${i<=d.stageN?stageColors[d.stageN]:'var(--border)'}"></div>`).join('')}
+      </div>
+      <div style="display:flex;gap:4px;margin-top:4px">
+        ${stages.map((s,i)=>`<div style="flex:1;text-align:center;font-size:9px;color:${i===d.stageN?stageColors[d.stageN]:'var(--t3)'};font-family:Montserrat;font-weight:${i===d.stageN?700:400}">${s}</div>`).join('')}
+      </div>
+    </div>`).join('');
+  if(tb) tb.innerHTML=deals.map(d=>`<tr>
+    <td class="td-name">${d.name}</td>
+    <td><span style="font-size:10px;padding:3px 8px;border-radius:5px;font-weight:700;font-family:Montserrat;background:rgba(0,122,255,0.1);color:var(--blue)">${d.stage}</span></td>
+    <td class="td-right">${d.qty.toLocaleString()}개</td>
+    <td class="td-right">₩${Math.round(d.rev).toLocaleString()}원</td>
+    <td>${d.date}</td><td>${d.owner}</td>
+  </tr>`).join('');
+}
+function buildAssets(){
+  const grid=document.getElementById('assetGrid');
+  if(!grid) return;
+  const items=[
+    {name:'넥밴드선풍기_쿠팡_상세',tags:['상세페이지'],color:'#007AFF'},
+    {name:'넥밴드선풍기_썸네일_v3',tags:['썸네일'],color:'#11CAA0'},
+    {name:'무드등_기획전_배너',tags:['배너'],color:'#F5A623'},
+    {name:'선풍기_인스타_소재',tags:['SNS 소재'],color:'#6C5CE7'},
+    {name:'청소기_스스_상세',tags:['상세페이지'],color:'#007AFF'},
+    {name:'청소기_썸네일_최종',tags:['썸네일'],color:'#11CAA0'},
+    {name:'디퓨저_29CM_배너',tags:['배너'],color:'#F5A623'},
+    {name:'무드등_SNS_릴스',tags:['SNS 소재'],color:'#6C5CE7'},
+  ];
+  const tagClass={'상세페이지':'tag-detail','썸네일':'tag-thumb','배너':'tag-banner','SNS 소재':'tag-sns'};
+  grid.innerHTML=items.map((item,i)=>`
+    <div class="asset-card">
+      <div class="asset-thumb" style="background:${item.color}18">
+        <div style="width:60px;height:60px;border-radius:12px;background:${item.color}30;display:flex;align-items:center;justify-content:center">
+          <svg style="width:28px;height:28px;stroke:${item.color};fill:none;stroke-width:1.5" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+        </div>
+        <div class="asset-hover">
+          <div class="asset-action" title="미리보기"><svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></div>
+          <div class="asset-action" title="다운로드"><svg viewBox="0 0 24 24"><polyline points="8 17 12 21 16 17"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.88 18.09A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg></div>
+        </div>
+      </div>
+      <div class="asset-info">
+        <div class="asset-name" title="${item.name}">${item.name}</div>
+        <div class="asset-tags">${item.tags.map(t=>`<span class="asset-tag ${tagClass[t]||'tag-detail'}">${t}</span>`).join('')}</div>
+      </div>
+    </div>`).join('');
+}
+
+// ════════════════════════════════════════════════
+// 스마트 매핑 엔진 — 채널별 컬럼명 자동 인식
+// ════════════════════════════════════════════════
+
+// 각 표준 필드별로 인식할 수 있는 컬럼명 목록
+const FIELD_MAP = {
+  name:   ['상품명','품목명','제품명','상품','아이템','item','product','상품 이름','상품이름'],
+  option: ['옵션','옵션명','옵션정보','선택옵션','option','상품옵션','옵션 정보'],
+  sku:    ['SKU','sku','SKU코드','상품코드','품번','제품코드','모델번호','barcode','바코드'],
+  qty:    ['수량','판매수량','주문수량','결제수량','qty','quantity','판매량','주문 수량','판매 수량'],
+  cost:   ['원가','매입가','공급가','원가(원)','cost','단가','매입단가'],
+  price:  ['판매가','단가','가격','price','정산금액','매출액','판매금액','실매출'],
+  revenue:['매출','매출액','총매출','결제금액','총결제금액','revenue','sales','정산금액합계','매출합계'],
+  margin: ['마진','수익','이익','순이익','margin','profit','마진액','수익금액'],
+  stock:  ['재고','재고수량','현재고','잔여재고','stock','inventory','재고량','현재재고'],
+  channel:['채널','판매채널','마켓','플랫폼','channel','platform','출처','판매처'],
+  date:   ['날짜','일자','주문일','결제일','date','주문일자','정산일','판매일'],
+  spend:  ['광고비','집행금액','광고집행금액','spend','cost','광고비용','총비용'],
+  roas:   ['ROAS','roas','광고수익률','전환가치/비용','전환율'],
+  impressions:['노출','노출수','impression','impressions','노출량'],
+  clicks: ['클릭','클릭수','click','clicks','클릭량'],
+};
+
+// 컬럼명 → 표준 필드 매핑
+function detectColumns(headers) {
+  const result = {};
+  headers.forEach(h => {
+    const hn = String(h).trim().toLowerCase().replace(/\s+/g,'');
+    for (const [field, aliases] of Object.entries(FIELD_MAP)) {
+      if (!result[field]) {
+        const match = aliases.some(a => {
+          const an = a.toLowerCase().replace(/\s+/g,'');
+          return hn === an || hn.includes(an) || an.includes(hn);
+        });
+        if (match) result[field] = h;
+      }
+    }
+  });
+  return result;
+}
+
+// 숫자 파싱 (쉼표, 원, % 등 제거)
+function parseNum(val) {
+  if (val == null || val === '') return 0;
+  return parseFloat(String(val).replace(/[^0-9.-]/g,'')) || 0;
+}
+
+// 채널명 자동 감지
+function detectChannel(filename, rows, colMap) {
+  const fn = filename.toLowerCase();
+  if (fn.includes('coupang') || fn.includes('쿠팡')) return '쿠팡';
+  if (fn.includes('smartstore') || fn.includes('스마트스토어') || fn.includes('naver')) return '스마트스토어';
+  if (fn.includes('zigzag') || fn.includes('지그재그')) return '지그재그';
+  if (fn.includes('musinsa') || fn.includes('무신사')) return '무신사';
+  if (fn.includes('29cm')) return '29CM';
+  if (fn.includes('ohouse') || fn.includes('오늘의집')) return '오늘의집';
+  if (fn.includes('kakao') || fn.includes('카카오')) return '카카오선물하기';
+  if (fn.includes('gmarket') || fn.includes('지마켓')) return 'G마켓';
+  if (fn.includes('11st') || fn.includes('11번가')) return '11번가';
+  if (fn.includes('ssg')) return 'SSG';
+  if (fn.includes('wconcept') || fn.includes('w컨셉')) return 'W컨셉';
+  if (fn.includes('kurly') || fn.includes('컬리')) return '마켓컬리';
+  if (fn.includes('자사몰') || fn.includes('mall') || fn.includes('shop')) return '자사몰';
+  // 데이터에서 채널 컬럼 있으면 첫 번째 값 사용
+  if (colMap.channel && rows[0]) return rows[0][colMap.channel] || '외부채널';
+  return '기타';
+}
+
+// ── 매출 엑셀 파싱 → 표준 데이터 변환 ──
+function parseSalesExcel(json, headers, filename) {
+  const colMap = detectColumns(headers);
+  const channel = detectChannel(filename, json, colMap);
+
+  return json.map(row => {
+    const qty    = parseNum(row[colMap.qty]);
+    const cost   = parseNum(row[colMap.cost]);
+    const price  = parseNum(row[colMap.price] || row[colMap.revenue]);
+    const revenue= colMap.revenue ? parseNum(row[colMap.revenue]) : qty * price;
+    const margin = colMap.margin  ? parseNum(row[colMap.margin])  : revenue - (cost * qty);
+    const stock  = parseNum(row[colMap.stock]);
+    return {
+      name   : String(row[colMap.name]   || '').trim() || '(상품명 없음)',
+      opt    : String(row[colMap.option] || '').trim() || '-',
+      sku    : String(row[colMap.sku]    || '').trim() || '-',
+      qty, cost, rev: revenue || qty * price, margin, stock,
+      channel,
+    };
+  }).filter(r => r.qty > 0 || r.rev > 0);
+}
+
+// ── 광고 엑셀 파싱 ──
+function parseAdsExcel(json, headers, filename) {
+  const colMap = detectColumns(headers);
+  const fn = filename.toLowerCase();
+  let media = '기타';
+  if (fn.includes('naver') || fn.includes('네이버')) media = fn.includes('gfa') ? '네이버 GFA' : '네이버 SA';
+  else if (fn.includes('meta') || fn.includes('facebook') || fn.includes('instagram')) media = '메타';
+  else if (fn.includes('google') || fn.includes('구글')) media = '구글 애즈';
+  else if (fn.includes('kakao') || fn.includes('카카오')) media = '카카오 모먼트';
+
+  // 집계
+  let imp=0, click=0, spend=0, rev=0;
+  json.forEach(row => {
+    imp   += parseNum(row[colMap.impressions]);
+    click += parseNum(row[colMap.clicks]);
+    spend += parseNum(row[colMap.spend] || row[colMap.cost]);
+    rev   += parseNum(row[colMap.revenue] || row[colMap.price]);
+  });
+  const roas = spend > 0 ? Math.round((rev / spend) * 100) : 0;
+  const cpc  = click > 0 ? Math.round(spend / click) : 0;
+  return [{ media, imp, click, spend, rev, roas, cpc }];
+}
+
+// ════════════════════════════════════════════════
+// 대시보드 전체 업데이트
+// ════════════════════════════════════════════════
+let uploadedSalesData = [];
+let uploadedAdsData   = [];
+
+function applyDataToDashboard() {
+  const data = uploadedSalesData.length ? uploadedSalesData : salesData;
+
+  // ── KPI 계산 ──
+  const totalRev    = data.reduce((s,r) => s + r.rev, 0);
+  const totalMargin = data.reduce((s,r) => s + r.margin, 0);
+  const marginRate  = totalRev > 0 ? ((totalMargin/totalRev)*100).toFixed(1) : 0;
+  const lowStock    = data.filter(r => r.stock > 0 && r.stock < 100).length;
+
+  // 광고 ROAS 평균
+  const adsData = uploadedAdsData.length ? uploadedAdsData : [
+    {media:'네이버 SA',imp:245000,click:4900,spend:2100000,rev:3738000,roas:178,cpc:429},
+    {media:'네이버 GFA',imp:890000,click:2670,spend:1400000,rev:1988000,roas:142,cpc:524},
+    {media:'구글 애즈',imp:412000,click:3296,spend:1800000,rev:2790000,roas:155,cpc:546},
+    {media:'메타 (인스타)',imp:1240000,click:4960,spend:1900000,rev:2261000,roas:119,cpc:383},
+    {media:'카카오 모먼트',imp:380000,click:1900,spend:1100000,rev:1441000,roas:131,cpc:579},
+  ];
+  const avgRoas = Math.round(adsData.reduce((s,a) => s + a.roas, 0) / adsData.length);
+
+  // ── KPI 카드 업데이트 ──
+  // 원 단위 표시
+  const revK = Math.round(totalRev).toLocaleString();
+  const marK = Math.round(totalMargin).toLocaleString();
+  const revEl2 = document.getElementById('val-revenue');
+  const marEl2 = document.getElementById('val-margin');
+  if(revEl2) revEl2.innerHTML = `₩${revK}<span class="kpi-unit">원</span>`;
+  if(marEl2) marEl2.innerHTML = `₩${marK}<span class="kpi-unit">원</span>`;
+  const chgRev = document.getElementById('chg-revenue');
+  if(chgRev){ chgRev.textContent='▲ 업로드 데이터 반영'; chgRev.className='kpi-change up'; }
+  const chgMar = document.getElementById('chg-margin');
+  if(chgMar){ chgMar.textContent=`▲ 마진율 ${marginRate}%`; chgMar.className='kpi-change up'; }
+  const roasEl = document.getElementById('val-roas');
+  if(roasEl) roasEl.innerHTML = `${avgRoas}<span class="kpi-unit">%</span>`;
+  const chgRoas = document.getElementById('chg-roas');
+  const prevRoas = 130.4; // 전일 기준값 (실제 데이터 연동 시 교체)
+  const roasDiff = ((avgRoas - prevRoas)/prevRoas*100).toFixed(1);
+  const roasUp = avgRoas >= prevRoas;
+  if(chgRoas){ chgRoas.textContent=(roasUp?'▲':'▼')+` 전일 대비 ${roasUp?'+':''}${roasDiff}%`; chgRoas.className='kpi-change '+(roasUp?'up':'down'); }
+  const stEl = document.getElementById('val-stock');
+  if(stEl) stEl.innerHTML = `${lowStock}<span class="kpi-unit">개</span>`;
+  const chgSt = document.getElementById('chg-stock');
+  if(chgSt){ chgSt.textContent=lowStock>0?'▼ 클릭하여 품목 확인':'▲ 재고 정상'; chgSt.className='kpi-change '+(lowStock>0?'down':'up'); }
+  renderGoalBars();
+
+  // ── 주간 매출 차트 업데이트 ──
+  if (homeChartInst) {
+    // 채널별 집계로 주간 트렌드 시뮬레이션 (실제로는 날짜 컬럼 필요)
+    const baseVal = totalRev / 1000000;
+    const trend = [0.74,0.69,0.84,0.80,0.89,0.82,0.91,1.0].map(r => parseFloat((baseVal * r).toFixed(1)));
+    homeChartInst.data.datasets[0].data = trend;
+    homeChartInst.update();
+  }
+
+  // ── 테이블 업데이트 ──
+  salesData.splice(0, salesData.length, ...data);
+  buildSalesTable();
+  buildStockTable();
+
+  // ── 채널 히트맵 업데이트 ──
+  const channelTotals = {};
+  data.forEach(r => {
+    channelTotals[r.channel] = (channelTotals[r.channel] || 0) + r.rev;
+  });
+  if (Object.keys(channelTotals).length > 0) {
+    const maxRev = Math.max(...Object.values(channelTotals));
+    const heatChannels = Object.entries(channelTotals)
+      .sort((a,b) => b[1]-a[1])
+      .slice(0,12)
+      .map(([n,v]) => ({n, v: Math.round((v/maxRev)*100)}));
+    const el = document.getElementById('homeHeatmap');
+    if (el) {
+      el.innerHTML = heatChannels.map(c => {
+        const op = 0.15 + (c.v/100)*0.75;
+        const bg = `rgba(0,122,255,${op.toFixed(2)})`;
+        const tc = c.v > 55 ? '#fff' : isDark ? '#7EC8FF' : '#003D7A';
+        return `<div class="hcell" style="background:${bg};color:${tc}" title="${c.n}: ${c.v}%">${c.n}<br>${c.v}%</div>`;
+      }).join('');
+    }
+  }
+
+  // ── 광고 테이블 ──
+  if (uploadedAdsData.length) {
+    const tb = document.getElementById('adsBody');
+    if (tb) {
+      tb.innerHTML = uploadedAdsData.map(r => {
+        const danger = r.roas < 130;
+        return `<tr>
+          <td class="td-name">${r.media}</td>
+          <td class="td-right">${r.imp.toLocaleString()}</td>
+          <td class="td-right">${r.click.toLocaleString()}</td>
+          <td class="td-right">₩${Math.round(r.spend).toLocaleString()}원</td>
+          <td class="td-right">₩${Math.round(r.rev).toLocaleString()}원</td>
+          <td class="td-right ${danger?'td-danger':'td-ok'}">${r.roas}%</td>
+          <td class="td-right">₩${r.cpc.toLocaleString()}원</td>
+          <td><span style="font-size:10px;padding:3px 8px;border-radius:5px;font-weight:700;font-family:Montserrat;background:${danger?'rgba(255,75,75,0.1)':'rgba(17,202,160,0.1)'};color:${danger?'#FF4B4B':'#11CAA0'}">${danger?'⚠ 기준미달':'정상'}</span></td>
+        </tr>`;
+      }).join('');
+    }
+  }
+
+  // ── 리스크 센터 업데이트 ──
+  updateRiskCenter(data, adsData);
+
+  showToast(`✅ 데이터 반영 완료 — ${data.length}개 SKU, 총매출 ₩${Math.round(totalRev).toLocaleString()}원`);
+}
+
+function updateKPI(id, valueHTML, changeText, changeDir) {
+  const card = document.getElementById(id);
+  if (!card) return;
+  const valEl = card.querySelector('.kpi-value');
+  const chgEl = card.querySelector('.kpi-change');
+  if (valEl) valEl.innerHTML = valueHTML;
+  if (chgEl && changeText) {
+    chgEl.textContent = changeText;
+    if (changeDir) { chgEl.className = `kpi-change ${changeDir}`; }
+  }
+}
+
+function updateRiskCenter(data, adsData) {
+  const riskEl = document.querySelector('#page-home .risk-item.risk-danger:first-child .risk-text');
+  const lowStockItems = data.filter(r => r.stock > 0 && r.stock < 100);
+  const badRoas = adsData.filter(a => a.roas < 130);
+
+  // 리스크 목록 재구성
+  const riskContainer = document.querySelector('#page-home .card:has(.risk-item)');
+  if (!riskContainer) return;
+  const riskList = riskContainer.querySelectorAll('.risk-item');
+
+  // 품절 임박 업데이트
+  if (lowStockItems.length > 0 && riskList[1]) {
+    const item = lowStockItems[0];
+    const daysLeft = item.qty > 0 ? Math.floor(item.stock / (item.qty / 7)) : '?';
+    riskList[1].querySelector('.risk-text').innerHTML =
+      `<strong>${item.name} ${item.opt}</strong> 재고 ${item.stock}개 (약 ${daysLeft}일치) — 즉시 발주 필요`;
+  }
+
+  // ROAS 위험 업데이트
+  if (badRoas.length > 0 && riskList[0]) {
+    riskList[0].querySelector('.risk-text').innerHTML =
+      `<strong>${badRoas.map(a=>a.media).join(', ')}</strong> ROAS ${badRoas.map(a=>a.roas+'%').join(', ')} — 기준치(130%) 미달`;
+  }
+}
+
+// ── 토스트 알림 ──
+function showToast(msg) {
+  let toast = document.getElementById('toast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'toast';
+    toast.style.cssText = `position:fixed;bottom:90px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--navy);color:#fff;padding:12px 24px;border-radius:30px;font-size:13px;font-weight:600;z-index:9999;opacity:0;transition:all .3s;white-space:nowrap;box-shadow:0 4px 20px rgba(0,0,0,0.2)`;
+    document.body.appendChild(toast);
+  }
+  toast.textContent = msg;
+  toast.style.opacity = '1';
+  toast.style.transform = 'translateX(-50%) translateY(0)';
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateX(-50%) translateY(20px)';
+  }, 3500);
+}
+
+// ── 매핑 결과 미리보기 모달 ──
+function showMappingPreview(filename, colMap, sampleRows, type, allRows, headers) {
+  const existing = document.getElementById('mappingModal');
+  if (existing) existing.remove();
+
+  const fields = Object.entries(colMap);
+  const previewHtml = fields.length > 0
+    ? fields.map(([f,c]) => `<div style="display:flex;gap:8px;padding:5px 0;border-bottom:1px solid var(--border2);font-size:12px"><span style="color:var(--t3);width:80px;flex-shrink:0">${f}</span><span style="color:var(--blue);font-weight:600">${c}</span></div>`).join('')
+    : '<p style="color:var(--red);font-size:12px">인식된 컬럼이 없습니다. 컬럼명을 확인해주세요.</p>';
+
+  const modal = document.createElement('div');
+  modal.id = 'mappingModal';
+  modal.style.cssText = `position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px`;
+  modal.innerHTML = `
+    <div style="background:var(--surface);border-radius:16px;padding:24px;width:100%;max-width:480px;max-height:80vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.3)">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+        <div>
+          <div style="font-size:15px;font-weight:700;color:var(--t1)">🤖 스마트 매핑 결과</div>
+          <div style="font-size:11px;color:var(--t3);margin-top:2px">${filename} · ${allRows.length}행 인식</div>
+        </div>
+        <button onclick="document.getElementById('mappingModal').remove()" style="width:28px;height:28px;border-radius:50%;background:var(--surface2);border:1px solid var(--border);color:var(--t2);font-size:14px;cursor:pointer">×</button>
+      </div>
+      <div style="background:var(--surface2);border-radius:10px;padding:14px;margin-bottom:16px">
+        <div style="font-size:11px;font-weight:700;color:var(--t3);font-family:Montserrat;letter-spacing:1px;margin-bottom:8px">인식된 컬럼 매핑</div>
+        ${previewHtml}
+      </div>
+      <div style="display:flex;gap:8px">
+        <button onclick="document.getElementById('mappingModal').remove()" style="flex:1;padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--t2);font-size:13px;font-weight:600;cursor:pointer">취소</button>
+        <button onclick="confirmUpload('${type}');document.getElementById('mappingModal').remove()" style="flex:2;padding:10px;border-radius:8px;background:var(--navy);color:#fff;font-size:13px;font-weight:700;cursor:pointer">✅ 이 매핑으로 데이터 반영</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+}
+
+let pendingUploadData = { sales: null, ads: null };
+
+function confirmUpload(type) {
+  if (type === 'sales' && pendingUploadData.sales) {
+    uploadedSalesData = pendingUploadData.sales;
+  }
+  if (type === 'ads' && pendingUploadData.ads) {
+    uploadedAdsData = pendingUploadData.ads;
+  }
+  applyDataToDashboard();
+}
+
+// ── FILE UPLOAD ──
+function handleFileUpload(event, type) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const data = new Uint8Array(e.target.result);
+      const wb   = XLSX.read(data, { type: 'array' });
+      const ws   = wb.Sheets[wb.SheetNames[0]];
+      const json = XLSX.utils.sheet_to_json(ws, { defval: '' });
+      const headers = json.length > 0 ? Object.keys(json[0]) : [];
+
+      addUploadHistory(file.name, file.size, type, json.length);
+
+      if (type === 'sales') {
+        const colMap = detectColumns(headers);
+        const parsed = parseSalesExcel(json, headers, file.name);
+        pendingUploadData.sales = parsed;
+        showMappingPreview(file.name, colMap, json.slice(0,3), type, json, headers);
+      } else if (type === 'ads') {
+        const colMap = detectColumns(headers);
+        const parsed = parseAdsExcel(json, headers, file.name);
+        pendingUploadData.ads = parsed;
+        showMappingPreview(file.name, colMap, json.slice(0,3), type, json, headers);
+      }
+    } catch(err) {
+      console.error(err);
+      showToast('❌ 파일을 읽는 중 오류가 발생했습니다.');
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function handleDrop(event, type) {
+  event.preventDefault();
+  event.currentTarget.classList.remove('drag');
+  const file = event.dataTransfer.files[0];
+  if (file) { const fakeEvt = { target: { files: [file] } }; handleFileUpload(fakeEvt, type); }
+}
+
+function addUploadHistory(name, size, type, rows) {
+  const hist = document.getElementById('uploadHistory');
+  if (!hist) return;
+  const sizeStr = (size/1024/1024).toFixed(1) + ' MB';
+  const now = new Date().toLocaleDateString('ko-KR', {year:'numeric',month:'2-digit',day:'2-digit'});
+  const item = document.createElement('div');
+  item.className = 'upload-file-item';
+  item.innerHTML = `<svg style="width:16px;height:16px;stroke:#11CAA0;fill:none;stroke-width:2;flex-shrink:0" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+    <div class="file-name">${name}</div>
+    <div class="file-meta">${sizeStr} · ${now} · ${rows}행</div>
+    <div class="file-status">처리 완료</div>`;
+  hist.prepend(item);
+}
+
+// ══════════════════════════════════════
+// EXCEL 내보내기
+// ══════════════════════════════════════
+function exportExcel() {
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('ko-KR',{year:'numeric',month:'2-digit',day:'2-digit'}).replace(/\. /g,'-').replace('.','');
+  const wb = XLSX.utils.book_new();
+
+  if(currentPage === 'sales') {
+    // ── 이커머스 매출 전용 엑셀 ──
+    const data = uploadedSalesData.length ? uploadedSalesData : salesData;
+    const period = currentSalesPeriod || '주';
+    const channel = currentSalesChannel || '전체';
+    const mult = ({"일":0.143,"주":1,"월":4.3,"분기":13,"년":52})[period]||1;
+    const filtered = channel==='전체' ? data : data.filter(r=>(r.channel||'')=== channel);
+
+    // 시트1: 매출 상세
+    const detailSheet = [
+      ['품목명','옵션','SKU','채널','판매수량','원가(원)','매출(원)','수익(원)','재고','소진예상(일)'],
+      ...filtered.map(r=>{
+        const qty=Math.round(r.qty*mult);
+        const rev=Math.round(r.rev*mult);
+        const mar=Math.round(r.margin*mult);
+        const days=r.qty>0?Math.floor(r.stock/((r.qty/7))):'-';
+        return [r.name,r.opt,r.sku,r.channel||'-',qty,r.cost,rev,mar,r.stock,days];
+      })
+    ];
+    // 시트2: 채널별 집계
+    const chMap={};
+    filtered.forEach(r=>{const ch=r.channel||'기타';if(!chMap[ch])chMap[ch]={rev:0,margin:0,qty:0,cnt:0};chMap[ch].rev+=r.rev*mult;chMap[ch].margin+=r.margin*mult;chMap[ch].qty+=r.qty*mult;chMap[ch].cnt++;});
+    const chSheet=[
+      ['채널','매출(원)','수익(원)','판매수량','SKU수','마진율(%)'],
+      ...Object.entries(chMap).sort((a,b)=>b[1].rev-a[1].rev).map(([ch,v])=>[
+        ch,Math.round(v.rev/1000),Math.round(v.margin/1000),Math.round(v.qty),v.cnt,
+        v.rev>0?((v.margin/v.rev)*100).toFixed(1):0
+      ])
+    ];
+    // 시트3: KPI 요약
+    const totalRev=filtered.reduce((s,r)=>s+r.rev*mult,0);
+    const totalMar=filtered.reduce((s,r)=>s+r.margin*mult,0);
+    const lowSt=filtered.filter(r=>r.stock>0&&r.stock<100).length;
+    const kpiSheet=[
+      ['지표','값','단위'],
+      ['기준 기간', period,''],
+      ['기준 채널', channel,''],
+      ['총 매출', Math.round(totalRev),'원'],
+      ['공헌이익', Math.round(totalMar),'원'],
+      ['마진율', totalRev>0?((totalMar/totalRev)*100).toFixed(1):0,'%'],
+      ['총 SKU', filtered.length,'개'],
+      ['품절임박', lowSt,'개'],
+      ['출력일', dateStr,''],
+    ];
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(kpiSheet), 'KPI 요약');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(detailSheet), '매출 상세');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(chSheet), '채널별 집계');
+    XLSX.writeFile(wb, `MELIENS_이커머스매출_${channel}_${period}_${dateStr}.xlsx`);
+    showToast(`✅ 이커머스 매출 엑셀 (${channel} · ${period}) 다운로드 완료`);
+
+  } else if(currentPage === 'ads') {
+    // ── 광고 성과 전용 엑셀 ──
+    const adsData=[
+      {media:'네이버 SA',imp:245000,click:4900,spend:2100,rev:3738,roas:178,cpc:429},
+      {media:'네이버 GFA',imp:890000,click:2670,spend:1400,rev:1988,roas:142,cpc:524},
+      {media:'구글 애즈',imp:412000,click:3296,spend:1800,rev:2790,roas:155,cpc:546},
+      {media:'메타 (인스타)',imp:1240000,click:4960,spend:1900,rev:2261,roas:119,cpc:383},
+      {media:'카카오 모먼트',imp:380000,click:1900,spend:1100,rev:1441,roas:131,cpc:579},
+    ];
+    const adsSheet=[
+      ['매체','노출수','클릭수','광고비(원)','전환매출(원)','ROAS(%)','CPC(원)','상태'],
+      ...adsData.map(r=>[r.media,r.imp,r.click,r.spend,r.rev,r.roas,r.cpc,r.roas<130?'⚠ 기준미달':'정상'])
+    ];
+    const totalSpend=adsData.reduce((s,r)=>s+r.spend,0);
+    const totalRev=adsData.reduce((s,r)=>s+r.rev,0);
+    const avgRoas=Math.round(adsData.reduce((s,r)=>s+r.roas,0)/adsData.length);
+    const adsSummary=[
+      ['지표','값','단위'],
+      ['총 광고비',totalSpend,'원'],
+      ['총 전환매출',totalRev,'원'],
+      ['평균 ROAS',avgRoas,'%'],
+      ['TACOS',(totalSpend/84700*100).toFixed(1),'%'],
+      ['출력일',dateStr,''],
+    ];
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(adsSummary), '광고 요약');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(adsSheet), '매체별 성과');
+    XLSX.writeFile(wb, `MELIENS_광고성과_${dateStr}.xlsx`);
+    showToast('✅ 광고 성과 엑셀 다운로드 완료');
+
+  } else if(currentPage === 'b2b') {
+    // ── B2B 전용 엑셀 ──
+    const b2bData=[
+      {name:'온라인팜',stage:'계약 검토',qty:3200,rev:12000,date:'2024.12.20',owner:'김팀장'},
+      {name:'헬스&뷰티 B2B',stage:'견적 조율',qty:1500,rev:5625,date:'2025.01.10',owner:'이대리'},
+      {name:'기업 복지몰',stage:'제안 중',qty:800,rev:3000,date:'2025.01.25',owner:'박사원'},
+      {name:'롯데ON MD',stage:'계약 완료',qty:5000,rev:18750,date:'2024.12.15',owner:'김팀장'},
+    ];
+    const b2bSheet=[
+      ['거래처명','단계','초도물량(개)','예상매출(원)','예상납품일','담당자'],
+      ...b2bData.map(r=>[r.name,r.stage,r.qty,r.rev,r.date,r.owner])
+    ];
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(b2bSheet), 'B2B 파이프라인');
+    XLSX.writeFile(wb, `MELIENS_B2B매출_${dateStr}.xlsx`);
+    showToast('✅ B2B 매출 엑셀 다운로드 완료');
+
+  } else {
+    // ── 홈 / 기타: 종합 요약 엑셀 ──
+    const data = uploadedSalesData.length ? uploadedSalesData : salesData;
+    const totalRev=data.reduce((s,r)=>s+r.rev,0);
+    const totalMar=data.reduce((s,r)=>s+r.margin,0);
+    const lowSt=data.filter(r=>r.stock>0&&r.stock<100).length;
+    const summarySheet=[
+      ['지표','값','단위'],
+      ['총 매출',Math.round(totalRev),'원'],
+      ['공헌이익',Math.round(totalMar),'원'],
+      ['마진율',totalRev>0?((totalMar/totalRev)*100).toFixed(1):0,'%'],
+      ['품절임박 SKU',lowSt,'개'],
+      ['총 SKU',data.length,'개'],
+      ['출력일',dateStr,''],
+    ];
+    const detailSheet=[
+      ['품목명','옵션','SKU','채널','판매수량','원가(원)','매출(원)','수익(원)','재고'],
+      ...data.map(r=>[r.name,r.opt,r.sku,r.channel||'-',r.qty,r.cost,Math.round(r.rev/1000),Math.round(r.margin/1000),r.stock])
+    ];
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(summarySheet), 'KPI 요약');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(detailSheet), '전체 매출');
+    XLSX.writeFile(wb, `MELIENS_주간보고_${dateStr}.xlsx`);
+    showToast('✅ 종합 주간보고 엑셀 다운로드 완료');
+  }
+}
+
+// ══════════════════════════════════════
+// PDF 내보내기 (인쇄 최적화)
+// ══════════════════════════════════════
+function exportPDF() {
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric'});
+  const pageNames = {home:'종합 대시보드',sales:'이커머스 매출 관리',ads:'광고 성과',b2b:'B2B 신규 매출',cx:'CX VOC 관리'};
+  const pageName = pageNames[currentPage] || '주간보고서';
+
+  document.getElementById('print-inject')?.remove();
+  document.getElementById('print-header')?.remove();
+
+  const printStyle = document.createElement('style');
+  printStyle.id = 'print-inject';
+  printStyle.textContent = `
+    @media print {
+      @page { size: A4 landscape; margin: 10mm; }
+      body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+      .sidebar, .float-banner, .topbar-right, #todayDate, .toggle-wrap { display: none !important; }
+      .app { display: block !important; height: auto !important; overflow: visible !important; }
+      .main { overflow: visible !important; height: auto !important; }
+      .content { overflow: visible !important; padding: 8px !important; height: auto !important; }
+      .page { display: none !important; }
+      #page-${currentPage} { display: block !important; }
+      .grid-4 { grid-template-columns: repeat(4,1fr) !important; }
+      .grid-2-1 { grid-template-columns: 1fr 280px !important; }
+      .grid-3 { grid-template-columns: repeat(3,1fr) !important; }
+      .grid-2 { grid-template-columns: 1fr 1fr !important; }
+      canvas { max-width: 100% !important; }
+      .ch-tabs { flex-wrap: wrap !important; }
+    }`;
+  document.head.appendChild(printStyle);
+
+  const header = document.createElement('div');
+  header.id = 'print-header';
+  header.innerHTML = `<div style="padding:8px 0 12px;border-bottom:2px solid #002D5E;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between">
+    <div style="display:flex;align-items:center;gap:12px">
+      <span style="font-family:Montserrat,sans-serif;font-weight:800;font-size:18px;color:#002D5E;letter-spacing:3px">MELIENS</span>
+      <span style="font-size:13px;font-weight:700;color:#007AFF;background:rgba(0,122,255,0.1);padding:3px 10px;border-radius:10px">${pageName}</span>
+    </div>
+    <span style="font-size:12px;color:#8A9BB0">${dateStr} 출력</span>
+  </div>`;
+  const contentEl = document.querySelector('.content');
+  if(contentEl) contentEl.prepend(header);
+
+  showToast(`🖨 ${pageName} PDF 인쇄 창이 열립니다`);
+  setTimeout(()=>{
+    window.print();
+    setTimeout(()=>{
+      document.getElementById('print-inject')?.remove();
+      document.getElementById('print-header')?.remove();
+    }, 2000);
+  }, 400);
+}
+
+// ══════════════════════════════════════
+// PPT 내보내기 — 페이지별 맞춤 슬라이드
+// ══════════════════════════════════════
+function exportPPT() {
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('ko-KR',{year:'numeric',month:'2-digit',day:'2-digit'}).replace(/\. /g,'-').replace('.','');
+
+  if(currentPage === 'sales') {
+    exportPPT_Sales(dateStr);
+  } else if(currentPage === 'ads') {
+    exportPPT_Ads(dateStr);
+  } else {
+    exportPPT_Home(dateStr);
+  }
+}
+
+// ── 공통 슬라이드 래퍼 ──
+function openPPTWindow(html, title) {
+  const win = window.open('', '_blank');
+  if(!win){ showToast('❌ 팝업 차단됨 — 브라우저 주소창 우측 팝업 허용 클릭'); return; }
+  win.document.write(html);
+  win.document.close();
+  showToast('✅ 새 탭에서 슬라이드가 열립니다 — 방향키로 이동, 🖨으로 PDF 저장');
+}
+
+function slideShell(slides, dateStr, subtitle) {
+  const nav = `<div class="nav"><button class="nb" onclick="go(-1)">← 이전</button><button class="nb print" onclick="window.print()">🖨 PDF 저장</button><button class="nb" onclick="go(1)">다음 →</button></div>`;
+  const css = `*{box-sizing:border-box;margin:0;padding:0}body{font-family:"Noto Sans KR",sans-serif;background:#0A0F1A;color:#fff;overflow:hidden;height:100vh}.slide{width:100vw;height:100vh;display:none;flex-direction:column;padding:44px 60px;position:relative;overflow:hidden}.slide.active{display:flex}.brand{font-family:Montserrat,sans-serif;font-weight:800;font-size:11px;letter-spacing:3px;color:rgba(255,255,255,.3);margin-bottom:24px}.stitle{font-size:36px;font-weight:700;margin-bottom:6px;line-height:1.2}.ssub{font-size:14px;color:rgba(255,255,255,.45);margin-bottom:30px}.snum{position:absolute;bottom:24px;right:32px;font-family:Montserrat,sans-serif;font-size:11px;color:rgba(255,255,255,.2)}.kbox{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:18px}.klb{font-size:10px;color:rgba(255,255,255,.4);font-family:Montserrat,sans-serif;letter-spacing:1px;margin-bottom:8px;text-transform:uppercase}.kv{font-family:Montserrat,sans-serif;font-size:26px;font-weight:800;line-height:1}.kc{font-size:11px;margin-top:6px}.bl{color:#007AFF}.up{color:#11CAA0}.dn{color:#FF4B4B}.am{color:#F5A623}.sbox{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:20px;flex:1}.sbt{font-size:10px;font-weight:700;color:rgba(255,255,255,.4);font-family:Montserrat,sans-serif;letter-spacing:1.5px;margin-bottom:12px;text-transform:uppercase}.row{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.07);font-size:13px;color:rgba(255,255,255,.8)}.row:last-child{border-bottom:none}.dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;margin-right:8px}.nav{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);display:flex;gap:10px;z-index:100}.nb{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);color:#fff;padding:8px 20px;border-radius:30px;font-size:12px;font-weight:700;cursor:pointer;font-family:Montserrat,sans-serif}.nb:hover{background:rgba(255,255,255,.18)}.nb.print{background:rgba(0,122,255,.25);border-color:rgba(0,122,255,.4)}@media print{.nav{display:none!important}@page{size:A4 landscape;margin:8mm}.slide{page-break-after:always;height:auto;min-height:180mm}.slide,.slide.active{display:flex!important}}`;
+  return `<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><title>MELIENS ${subtitle} ${dateStr}</title><link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;800&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet"><style>${css}</style></head><body>${slides}${nav}<script>let c=1,t=document.querySelectorAll('.slide').length;function go(d){c=Math.max(1,Math.min(t,c+d));document.querySelectorAll('.slide').forEach((s,i)=>s.classList.toggle('active',i===c-1));}document.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' ')go(1);if(e.key==='ArrowLeft')go(-1)});<\/script></body></html>`;
+}
+
+// ── 이커머스 매출 PPT ──
+function exportPPT_Sales(dateStr) {
+  const allData = uploadedSalesData.length ? uploadedSalesData : salesData;
+  const channel = currentSalesChannel || '전체';
+  const period  = currentSalesPeriod  || '주';
+  const mult = ({"일":0.143,"주":1,"월":4.3,"분기":13,"년":52})[period]||1;
+  const data = channel==='전체' ? allData : allData.filter(r=>(r.channel||'')=== channel);
+
+  const totalRev = data.reduce((s,r)=>s+r.rev*mult,0);
+  const totalMar = data.reduce((s,r)=>s+r.margin*mult,0);
+  const marginRate = totalRev>0?((totalMar/totalRev)*100).toFixed(1):0;
+  const lowSt = data.filter(r=>r.stock>0&&r.stock<100);
+  const topSKU = [...data].sort((a,b)=>b.rev-a.rev).slice(0,5);
+
+  // 채널별 집계
+  const chMap={};
+  data.forEach(r=>{const ch=r.channel||'기타';if(!chMap[ch])chMap[ch]=0;chMap[ch]+=r.rev*mult;});
+  const topCh=Object.entries(chMap).sort((a,b)=>b[1]-a[1]).slice(0,6);
+
+  const slide1 = `<div class="slide active" style="background:linear-gradient(135deg,#001428 0%,#002D5E 70%,#003D7A 100%);justify-content:center">
+    <div style="max-width:620px">
+      <div style="font-family:Montserrat,sans-serif;font-size:10px;letter-spacing:5px;color:rgba(255,255,255,.35);margin-bottom:16px">ECOMMERCE SALES REPORT</div>
+      <div style="font-family:Montserrat,sans-serif;font-weight:800;font-size:60px;letter-spacing:4px;color:#fff;line-height:1;margin-bottom:12px">MELIENS</div>
+      <div style="font-size:18px;color:rgba(255,255,255,.65);margin-bottom:4px">이커머스 매출 보고서 · ${dateStr}</div>
+      <div style="font-size:13px;color:rgba(255,255,255,.35);margin-bottom:40px">기준: ${period} · 채널: ${channel}</div>
+      <div style="display:flex;gap:12px">
+        <div style="background:rgba(0,122,255,.2);border:1px solid rgba(0,122,255,.3);border-radius:12px;padding:14px 20px;text-align:center"><div style="font-family:Montserrat,sans-serif;font-size:20px;font-weight:800;color:#007AFF">₩${Math.round(totalRev).toLocaleString()}</div><div style="font-size:10px;color:rgba(255,255,255,.4);margin-top:4px">총 매출(원)</div></div>
+        <div style="background:rgba(17,202,160,.2);border:1px solid rgba(17,202,160,.3);border-radius:12px;padding:14px 20px;text-align:center"><div style="font-family:Montserrat,sans-serif;font-size:20px;font-weight:800;color:#11CAA0">${marginRate}%</div><div style="font-size:10px;color:rgba(255,255,255,.4);margin-top:4px">마진율</div></div>
+        <div style="background:rgba(${lowSt.length>0?'255,75,75':'17,202,160'},.2);border:1px solid rgba(${lowSt.length>0?'255,75,75':'17,202,160'},.3);border-radius:12px;padding:14px 20px;text-align:center"><div style="font-family:Montserrat,sans-serif;font-size:20px;font-weight:800;color:${lowSt.length>0?'#FF4B4B':'#11CAA0'}">${data.length}</div><div style="font-size:10px;color:rgba(255,255,255,.4);margin-top:4px">SKU 수</div></div>
+      </div>
+    </div><div class="snum">1 / 4</div></div>`;
+
+  const slide2 = `<div class="slide" style="background:#07111F">
+    <div class="brand">MELIENS ECOMMERCE · ${period} · ${channel}</div>
+    <div class="stitle">채널별 매출 현황</div>
+    <div class="ssub">Channel Revenue Breakdown</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;flex:1">
+      <div class="sbox"><div class="sbt">TOP 채널 매출 (원)</div>
+        ${topCh.map(([ch,v])=>`<div class="row"><span style="display:flex;align-items:center"><span class="dot" style="background:#007AFF"></span>${ch}</span><span style="font-weight:700;font-family:Montserrat,sans-serif;color:#007AFF">₩${Math.round(v/1000).toLocaleString()}</span></div>`).join('')}
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div class="kbox"><div class="klb">총 매출</div><div class="kv bl">₩${Math.round(totalRev).toLocaleString()}<span style="font-size:14px"> 원</span></div></div>
+        <div class="kbox"><div class="klb">공헌이익</div><div class="kv up">₩${Math.round(totalMar).toLocaleString()}<span style="font-size:14px"> 원</span></div></div>
+        <div class="kbox"><div class="klb">마진율</div><div class="kv am">${marginRate}<span style="font-size:14px">%</span></div></div>
+      </div>
+    </div><div class="snum">2 / 4</div></div>`;
+
+  const slide3 = `<div class="slide" style="background:#07111F">
+    <div class="brand">MELIENS ECOMMERCE · ${period} · ${channel}</div>
+    <div class="stitle">TOP SKU 성과</div>
+    <div class="ssub">Best Performing Products</div>
+    <div class="sbox" style="flex:1">
+      <div class="sbt">매출 상위 5개 SKU (원)</div>
+      <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr;gap:0;margin-bottom:8px">
+        ${['품목명','판매수량','매출','수익','재고'].map(h=>`<div style="font-size:10px;color:rgba(255,255,255,.35);font-family:Montserrat,sans-serif;padding:6px 4px;border-bottom:1px solid rgba(255,255,255,.1)">${h}</div>`).join('')}
+      </div>
+      ${topSKU.map((r,i)=>`<div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr;gap:0;border-bottom:1px solid rgba(255,255,255,.06)">
+        <div style="padding:8px 4px;font-size:13px;font-weight:700"><span style="color:rgba(255,255,255,.3);font-family:Montserrat,sans-serif;font-size:11px;margin-right:6px">${String(i+1).padStart(2,'0')}</span>${r.name} <span style="font-size:10px;color:rgba(255,255,255,.4)">${r.opt}</span></div>
+        <div style="padding:8px 4px;font-size:12px;text-align:right;font-family:Montserrat,sans-serif">${Math.round(r.qty*mult).toLocaleString()}</div>
+        <div style="padding:8px 4px;font-size:12px;text-align:right;font-family:Montserrat,sans-serif;color:#007AFF">₩${Math.round(r.rev*mult/1000).toLocaleString()}</div>
+        <div style="padding:8px 4px;font-size:12px;text-align:right;font-family:Montserrat,sans-serif;color:#11CAA0">₩${Math.round(r.margin*mult/1000).toLocaleString()}</div>
+        <div style="padding:8px 4px;font-size:12px;text-align:right;font-family:Montserrat,sans-serif;color:${r.stock<100?'#FF4B4B':'rgba(255,255,255,.7)'}">${r.stock}</div>
+      </div>`).join('')}
+    </div><div class="snum">3 / 4</div></div>`;
+
+  const slide4 = `<div class="slide" style="background:linear-gradient(135deg,#001428 0%,#002D5E 100%)">
+    <div class="brand">MELIENS ECOMMERCE · ${period} · ${channel}</div>
+    <div class="stitle">재고 & 액션 아이템</div>
+    <div class="ssub">Stock Alert & Action Required</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;flex:1">
+      <div class="sbox">
+        <div class="sbt" style="color:#FF4B4B">⚠ 품절 임박 (재고 100개 미만)</div>
+        ${lowSt.length>0 ? lowSt.slice(0,5).map(r=>{
+          const days=r.qty>0?Math.floor(r.stock/((r.qty/7))):'-';
+          return `<div class="row"><span style="display:flex;align-items:center"><span class="dot" style="background:#FF4B4B"></span>${r.name} ${r.opt}</span><span style="color:#FF4B4B;font-family:Montserrat,sans-serif;font-weight:700">${r.stock}개 · ${days}일</span></div>`;
+        }).join('') : '<div style="color:rgba(255,255,255,.4);font-size:13px;padding:12px 0">품절 임박 상품 없음 ✅</div>'}
+      </div>
+      <div class="sbox">
+        <div class="sbt" style="color:#11CAA0">✅ 이번 ${period} 성과 요약</div>
+        <div class="row"><span>총 매출</span><span style="font-family:Montserrat,sans-serif;font-weight:700;color:#007AFF">₩${Math.round(totalRev).toLocaleString()}원</span></div>
+        <div class="row"><span>공헌이익</span><span style="font-family:Montserrat,sans-serif;font-weight:700;color:#11CAA0">₩${Math.round(totalMar).toLocaleString()}원</span></div>
+        <div class="row"><span>마진율</span><span style="font-family:Montserrat,sans-serif;font-weight:700;color:#F5A623">${marginRate}%</span></div>
+        <div class="row"><span>관리 SKU</span><span style="font-family:Montserrat,sans-serif;font-weight:700">${data.length}개</span></div>
+        <div class="row"><span>품절임박</span><span style="font-family:Montserrat,sans-serif;font-weight:700;color:${lowSt.length>0?'#FF4B4B':'#11CAA0'}">${lowSt.length}개</span></div>
+      </div>
+    </div><div class="snum">4 / 4</div></div>`;
+
+  openPPTWindow(slideShell(slide1+slide2+slide3+slide4, dateStr, `이커머스매출_${channel}`), '이커머스 매출');
+}
+
+// ── 광고 성과 PPT ──
+function exportPPT_Ads(dateStr) {
+  const adsData=[
+    {media:'네이버 SA',imp:245000,click:4900,spend:2100,rev:3738,roas:178,cpc:429},
+    {media:'네이버 GFA',imp:890000,click:2670,spend:1400,rev:1988,roas:142,cpc:524},
+    {media:'구글 애즈',imp:412000,click:3296,spend:1800,rev:2790,roas:155,cpc:546},
+    {media:'메타 (인스타)',imp:1240000,click:4960,spend:1900,rev:2261,roas:119,cpc:383},
+    {media:'카카오 모먼트',imp:380000,click:1900,spend:1100,rev:1441,roas:131,cpc:579},
+  ];
+  const totalSpend=adsData.reduce((s,r)=>s+r.spend,0);
+  const totalRev=adsData.reduce((s,r)=>s+r.rev,0);
+  const avgRoas=Math.round(adsData.reduce((s,r)=>s+r.roas,0)/adsData.length);
+
+  const slide1=`<div class="slide active" style="background:linear-gradient(135deg,#001428 0%,#002D5E 70%,#003D7A 100%);justify-content:center">
+    <div style="max-width:620px">
+      <div style="font-family:Montserrat,sans-serif;font-size:10px;letter-spacing:5px;color:rgba(255,255,255,.35);margin-bottom:16px">AD PERFORMANCE REPORT</div>
+      <div style="font-family:Montserrat,sans-serif;font-weight:800;font-size:60px;letter-spacing:4px;color:#fff;line-height:1;margin-bottom:12px">MELIENS</div>
+      <div style="font-size:18px;color:rgba(255,255,255,.65);margin-bottom:40px">광고 성과 보고서 · ${dateStr}</div>
+      <div style="display:flex;gap:12px">
+        <div style="background:rgba(0,122,255,.2);border:1px solid rgba(0,122,255,.3);border-radius:12px;padding:14px 20px;text-align:center"><div style="font-family:Montserrat,sans-serif;font-size:20px;font-weight:800;color:#007AFF">₩${totalSpend.toLocaleString()}</div><div style="font-size:10px;color:rgba(255,255,255,.4);margin-top:4px">총 광고비(원)</div></div>
+        <div style="background:rgba(17,202,160,.2);border:1px solid rgba(17,202,160,.3);border-radius:12px;padding:14px 20px;text-align:center"><div style="font-family:Montserrat,sans-serif;font-size:20px;font-weight:800;color:#11CAA0">₩${totalRev.toLocaleString()}</div><div style="font-size:10px;color:rgba(255,255,255,.4);margin-top:4px">전환매출(원)</div></div>
+        <div style="background:rgba(${avgRoas<130?'255,75,75':'17,202,160'},.2);border:1px solid rgba(${avgRoas<130?'255,75,75':'17,202,160'},.3);border-radius:12px;padding:14px 20px;text-align:center"><div style="font-family:Montserrat,sans-serif;font-size:20px;font-weight:800;color:${avgRoas<130?'#FF4B4B':'#11CAA0'}">${avgRoas}%</div><div style="font-size:10px;color:rgba(255,255,255,.4);margin-top:4px">평균 ROAS</div></div>
+      </div>
+    </div><div class="snum">1 / 2</div></div>`;
+
+  const slide2=`<div class="slide" style="background:#07111F">
+    <div class="brand">MELIENS AD PERFORMANCE · ${dateStr}</div>
+    <div class="stitle">매체별 성과 상세</div>
+    <div class="ssub">Media Performance Breakdown</div>
+    <div class="sbox" style="flex:1">
+      <div class="sbt">매체별 광고비 / 전환매출 / ROAS</div>
+      <div style="display:grid;grid-template-columns:1.5fr 1fr 1fr 1fr 1fr;gap:0;margin-bottom:8px">
+        ${['매체','광고비(원)','전환매출(원)','ROAS','상태'].map(h=>`<div style="font-size:10px;color:rgba(255,255,255,.35);font-family:Montserrat,sans-serif;padding:6px 4px;border-bottom:1px solid rgba(255,255,255,.1)">${h}</div>`).join('')}
+      </div>
+      ${adsData.map(r=>`<div style="display:grid;grid-template-columns:1.5fr 1fr 1fr 1fr 1fr;gap:0;border-bottom:1px solid rgba(255,255,255,.06)">
+        <div style="padding:9px 4px;font-size:13px;font-weight:700">${r.media}</div>
+        <div style="padding:9px 4px;font-size:12px;text-align:right;font-family:Montserrat,sans-serif">₩${r.spend.toLocaleString()}</div>
+        <div style="padding:9px 4px;font-size:12px;text-align:right;font-family:Montserrat,sans-serif;color:#11CAA0">₩${r.rev.toLocaleString()}</div>
+        <div style="padding:9px 4px;font-size:13px;text-align:right;font-family:Montserrat,sans-serif;font-weight:700;color:${r.roas<130?'#FF4B4B':'#11CAA0'}">${r.roas}%</div>
+        <div style="padding:9px 4px;font-size:11px;text-align:center"><span style="padding:2px 8px;border-radius:4px;background:${r.roas<130?'rgba(255,75,75,.15)':'rgba(17,202,160,.15)'};color:${r.roas<130?'#FF4B4B':'#11CAA0'};font-family:Montserrat,sans-serif;font-weight:700">${r.roas<130?'⚠ 미달':'정상'}</span></div>
+      </div>`).join('')}
+    </div><div class="snum">2 / 2</div></div>`;
+
+  openPPTWindow(slideShell(slide1+slide2, dateStr, '광고성과'), '광고 성과');
+}
+
+// ── 홈(종합) PPT ──
+function exportPPT_Home(dateStr) {
+  const data = uploadedSalesData.length ? uploadedSalesData : salesData;
+  const totalRev=data.reduce((s,r)=>s+r.rev,0);
+  const totalMar=data.reduce((s,r)=>s+r.margin,0);
+  const marginRate=totalRev>0?((totalMar/totalRev)*100).toFixed(1):0;
+  const lowStock=data.filter(r=>r.stock>0&&r.stock<100).length;
+  const totalRevK=Math.round(totalRev/1000).toLocaleString();
+  const totalMarK=Math.round(totalMar/1000).toLocaleString();
+
+  const chMap={};
+  data.forEach(r=>{const ch=r.channel||'기타';if(!chMap[ch])chMap[ch]=0;chMap[ch]+=r.rev;});
+  const topCh=Object.entries(chMap).sort((a,b)=>b[1]-a[1]).slice(0,5);
+
+  const slide1=`<div class="slide active" style="background:linear-gradient(135deg,#001428 0%,#002D5E 70%,#003D7A 100%);justify-content:center">
+    <div style="max-width:640px">
+      <div style="font-family:Montserrat,sans-serif;font-size:10px;letter-spacing:5px;color:rgba(255,255,255,.35);margin-bottom:18px">WEEKLY PERFORMANCE REPORT</div>
+      <div style="font-family:Montserrat,sans-serif;font-weight:800;font-size:64px;letter-spacing:5px;color:#fff;line-height:1;margin-bottom:14px">MELIENS</div>
+      <div style="font-size:20px;color:rgba(255,255,255,.65);margin-bottom:44px">${dateStr} 기준 주간보고서</div>
+      <div style="display:flex;gap:14px">
+        <div style="background:rgba(0,122,255,.2);border:1px solid rgba(0,122,255,.3);border-radius:12px;padding:16px 22px;text-align:center"><div style="font-family:Montserrat,sans-serif;font-size:22px;font-weight:800;color:#007AFF">₩${totalRevK}</div><div style="font-size:10px;color:rgba(255,255,255,.45);margin-top:5px">총 매출(원)</div></div>
+        <div style="background:rgba(17,202,160,.2);border:1px solid rgba(17,202,160,.3);border-radius:12px;padding:16px 22px;text-align:center"><div style="font-family:Montserrat,sans-serif;font-size:22px;font-weight:800;color:#11CAA0">${marginRate}%</div><div style="font-size:10px;color:rgba(255,255,255,.45);margin-top:5px">마진율</div></div>
+        <div style="background:rgba(${lowStock>0?'255,75,75':'17,202,160'},.2);border:1px solid rgba(${lowStock>0?'255,75,75':'17,202,160'},.3);border-radius:12px;padding:16px 22px;text-align:center"><div style="font-family:Montserrat,sans-serif;font-size:22px;font-weight:800;color:${lowStock>0?'#FF4B4B':'#11CAA0'}">${lowStock}개</div><div style="font-size:10px;color:rgba(255,255,255,.45);margin-top:5px">품절임박 SKU</div></div>
+      </div>
+    </div><div class="snum">1 / 3</div></div>`;
+
+  const slide2=`<div class="slide" style="background:#07111F">
+    <div class="brand">MELIENS WEEKLY REPORT</div>
+    <div class="stitle">이번 주 핵심 지표</div><div class="ssub">Key Performance Indicators</div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px">
+      <div class="kbox"><div class="klb">총 매출</div><div class="kv bl">₩${totalRevK}<span style="font-size:13px"> 원</span></div><div class="kc up">▲ 업로드 기준</div></div>
+      <div class="kbox"><div class="klb">공헌이익</div><div class="kv up">₩${totalMarK}<span style="font-size:13px"> 원</span></div><div class="kc up">마진율 ${marginRate}%</div></div>
+      <div class="kbox"><div class="klb">총 SKU</div><div class="kv am">${data.length}<span style="font-size:13px">개</span></div><div class="kc" style="color:rgba(255,255,255,.4)">관리 중인 상품</div></div>
+      <div class="kbox"><div class="klb">품절 임박</div><div class="kv ${lowStock>0?'dn':'up'}">${lowStock}<span style="font-size:13px">개</span></div><div class="kc ${lowStock>0?'dn':'up'}">${lowStock>0?'▼ 발주 필요':'▲ 정상'}</div></div>
+    </div>
+    <div class="sbox"><div class="sbt">TOP 채널 매출 (원)</div>
+      ${topCh.map(([ch,v])=>`<div class="row"><span><span class="dot" style="background:#007AFF"></span>${ch}</span><span style="font-weight:700;font-family:Montserrat,sans-serif;color:#007AFF">₩${Math.round(v/1000).toLocaleString()}</span></div>`).join('')}
+    </div><div class="snum">2 / 3</div></div>`;
+
+  const slide3=`<div class="slide" style="background:linear-gradient(135deg,#001428 0%,#002D5E 100%)">
+    <div class="brand">MELIENS WEEKLY REPORT</div>
+    <div class="stitle">리스크 & 다음 주 과제</div><div class="ssub">Risk & Action Plan</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;flex:1">
+      <div class="sbox"><div class="sbt" style="color:#FF4B4B">🔴 즉시 대응</div>
+        <div class="row"><span class="dot" style="background:#FF4B4B"></span><div>메타 광고 ROAS 기준치 미달 — 소재 교체 승인</div></div>
+        ${lowStock>0?`<div class="row"><span class="dot" style="background:#FF4B4B"></span><div>품절 임박 ${lowStock}개 SKU — 추가 발주 승인</div></div>`:''}
+      </div>
+      <div class="sbox"><div class="sbt" style="color:#11CAA0">✅ 이번 주 성과</div>
+        <div class="row"><span class="dot" style="background:#11CAA0"></span><div>총매출 ₩${totalRevK}원 달성</div></div>
+        <div class="row"><span class="dot" style="background:#11CAA0"></span><div>마진율 ${marginRate}% 유지</div></div>
+        <div class="row"><span class="dot" style="background:#007AFF"></span><div>B2B 온라인팜 계약 검토 순항</div></div>
+        <div class="row"><span class="dot" style="background:#007AFF"></span><div>CX 굿서비스 기준 유지</div></div>
+      </div>
+    </div><div class="snum">3 / 3</div></div>`;
+
+  openPPTWindow(slideShell(slide1+slide2+slide3, dateStr, '종합보고'), '종합 주간보고');
+}
+
+
+
+// ════════════════════════════════════════════════
+// 재고관리 — 구글 시트 CSV 자동 연동
+// ════════════════════════════════════════════════
+const SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSZb-LcLVDDQ9eOfLHljJKi_U-lmMcL6RmoVDrFjCnngO0WuoFHtDjV_VAC_f_Mj7eBiNs4WPqGhflV/pub?output=csv';
+
+let invRawData = [];     // 파싱된 전체 데이터
+let invHeaders = [];     // 컬럼 헤더 (주차/채널)
+let invWeeks = [];       // 주차 목록
+let invCurrentFilter = 'all';
+let invCurrentWeek = 'latest';
+
+// CSV 파싱 함수
+// RFC4180 완전 준수 CSV 파서 (줄바꿈 포함 셀 처리)
+function parseCSV(text) {
+  const rows = [];
+  let row = [], cur = '', inQ = false, i = 0;
+  const CR = 13, LF = 10, COMMA = 44, DQUOTE = 34;
+  if(text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
+  while(i < text.length) {
+    const code = text.charCodeAt(i);
+    if(inQ) {
+      if(code === DQUOTE && text.charCodeAt(i+1) === DQUOTE){ cur += '"'; i += 2; }
+      else if(code === DQUOTE){ inQ = false; i++; }
+      else { cur += text[i]; i++; }
+    } else {
+      if(code === DQUOTE){ inQ = true; i++; }
+      else if(code === COMMA){ row.push(cur); cur = ''; i++; }
+      else if(code === CR && text.charCodeAt(i+1) === LF){ row.push(cur); rows.push(row); row = []; cur = ''; i += 2; }
+      else if(code === LF || code === CR){ row.push(cur); rows.push(row); row = []; cur = ''; i++; }
+      else { cur += text[i]; i++; }
+    }
+  }
+  if(cur || row.length) { row.push(cur); rows.push(row); }
+  return rows;
+}
+
+// 구글 시트에서 데이터 로드
+async function loadInventoryFromSheet() {
+  const btn = document.getElementById('invRefreshBtn');
+  const loadMsg = document.getElementById('invLoadingMsg');
+  const tableWrap = document.getElementById('invTableWrap');
+  if(btn){ btn.innerHTML = '<svg style="width:13px;height:13px;stroke:#fff;fill:none;stroke-width:2.5;animation:spin 1s linear infinite" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> 불러오는 중...'; btn.disabled=true; }
+  if(loadMsg) loadMsg.style.display='block';
+  if(tableWrap) tableWrap.style.display='none';
+
+  // 여러 프록시 순차 시도
+  const proxies = [
+    `https://api.allorigins.win/raw?url=${encodeURIComponent(SHEET_CSV_URL)}`,
+    `https://corsproxy.io/?${encodeURIComponent(SHEET_CSV_URL)}`,
+    `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(SHEET_CSV_URL)}`,
+    `https://thingproxy.freeboard.io/fetch/${SHEET_CSV_URL}`,
+  ];
+  let success = false;
+  for(const proxyUrl of proxies) {
+    try {
+      const res = await fetch(proxyUrl, {signal: AbortSignal.timeout(8000)});
+      if(!res.ok) continue;
+      const text = await res.text();
+      if(text && text.length > 10 && !text.includes('<html')) {
+        processInventoryCSV(text);
+        success = true;
+        break;
+      }
+    } catch(e) { continue; }
+  }
+  if(!success) {
+    // 모든 프록시 실패 → 직접 fetch 시도 (no-cors)
+    try {
+      const res = await fetch(SHEET_CSV_URL);
+      const text = await res.text();
+      processInventoryCSV(text);
+      success = true;
+    } catch(e) {}
+  }
+  if(!success) {
+    if(loadMsg) loadMsg.innerHTML = `
+      <div style="padding:20px;text-align:center">
+        <div style="font-size:32px;margin-bottom:12px">⚠️</div>
+        <div style="font-size:14px;font-weight:700;color:var(--t1);margin-bottom:8px">CORS 정책으로 자동 로드 불가</div>
+        <div style="font-size:12px;color:var(--t2);line-height:1.7;margin-bottom:16px">
+          브라우저 보안 정책으로 외부 구글 시트를 직접 불러올 수 없습니다.<br>
+          아래 방법 중 하나를 선택해주세요.
+        </div>
+        <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+          <a href="${SHEET_CSV_URL}" target="_blank" style="display:inline-flex;align-items:center;gap:6px;padding:10px 16px;background:var(--teal);color:#fff;border-radius:8px;font-size:12px;font-weight:700;text-decoration:none">
+            📥 CSV 직접 다운로드
+          </a>
+          <button onclick="document.getElementById('invManualFile').click()" style="display:inline-flex;align-items:center;gap:6px;padding:10px 16px;background:var(--navy);color:#fff;border-radius:8px;font-size:12px;font-weight:700;border:none;cursor:pointer">
+            📂 파일 직접 업로드
+          </button>
+          <input type="file" id="invManualFile" accept=".csv,.xlsx,.xls" style="display:none" onchange="handleInvManualUpload(event)">
+        </div>
+        <div style="margin-top:14px;font-size:11px;color:var(--t3)">
+          CSV 다운로드 후 "파일 직접 업로드" 버튼으로 올려주시면 됩니다
+        </div>
+      </div>`;
+    showToast('⚠ 자동 로드 불가 — 수동 업로드 사용해주세요');
+  }
+  { // finally block
+    if(btn){ btn.innerHTML = '<svg style="width:13px;height:13px;stroke:#fff;fill:none;stroke-width:2.5" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> 시트 새로고침'; btn.disabled=false; }
+  }
+}
+
+function processInventoryCSV(text) {
+  const rows = parseCSV(text);
+  if(rows.length < 3) { showToast('❌ 데이터가 없습니다'); return; }
+
+  const weekRow   = rows[0]; // 주차 헤더행 (col2~: 11/1~3(1주차), ...)
+  const headerRow = rows[1]; // 채널명행  (품목명, 색상, 지그재그, 에이블리, ...)
+
+  // ── 주차별 컬럼 범위 파악 ──
+  const weekMeta = [];
+  for(let i=0; i<weekRow.length; i++){
+    if(weekRow[i] && weekRow[i].trim()){
+      // 주차명에서 괄호(x주차) 제거
+      const wLabel = weekRow[i].trim().replace(/\s*\(\d+주차\)/, '').trim();
+      weekMeta.push({ label: wLabel, start: i });
+    }
+  }
+  // 각 주차의 end 컬럼 = 다음 주차의 start
+  for(let i=0; i<weekMeta.length-1; i++){
+    weekMeta[i].end = weekMeta[i+1].start;
+  }
+  weekMeta[weekMeta.length-1].end = headerRow.length;
+
+  // ── 각 주차별 채널 목록 파악 (합계 열 제외) ──
+  weekMeta.forEach(w => {
+    w.channels = [];
+    for(let ci=w.start; ci<w.end; ci++){
+      const ch = (headerRow[ci]||'').trim().replace(/[\r\n]/g,''); // 줄바꿈 제거nels.push({ name: ch, col: ci });
+    }
+  });
+
+  // ── 전체 주차 & 채널 통합 목록 ──
+  invWeeks = weekMeta.map(w => w.label);
+
+  // 전체 채널 통합 (모든 주차에 걸쳐 등장한 채널들)
+  const allChSet = new Set();
+  weekMeta.forEach(w => w.channels.forEach(c => allChSet.add(c.name)));
+  const allChannels = Array.from(allChSet);
+
+  invHeaders = { weekMeta, allChannels, uniqueChannels: allChannels };
+
+  // ── 데이터 행 파싱 (행3~, 품목명 없거나 '합계'인 행 제외) ──
+  invRawData = [];
+  for(let ri=2; ri<rows.length; ri++){
+    const row = rows[ri];
+    const name = (row[0]||'').trim();
+    if(!name || name === '합계') continue;
+    const item = { name, color: (row[1]||'').trim(), weeks: {} };
+    weekMeta.forEach(w => {
+      const wData = { _total: 0 };
+      w.channels.forEach(ch => {
+        const raw = (row[ch.col]||'').trim();
+        const val = /^\d+$/.test(raw) ? parseInt(raw) : 0;
+        wData[ch.name] = val;
+        wData._total += val;
+      });
+      item.weeks[w.label] = wData;
+    });
+    invRawData.push(item);
+  }
+
+  // ── 주차 드롭다운 갱신 ──
+  const sel = document.getElementById('invWeekSelect');
+  if(sel){
+    const latestLabel = invWeeks[invWeeks.length-1] || '';
+    sel.innerHTML = `<option value="latest">최신 주차 (${latestLabel})</option>`;
+    [...invWeeks].reverse().forEach(w => {
+      const opt = document.createElement('option');
+      opt.value = w; opt.textContent = w;
+      sel.appendChild(opt);
+    });
+  }
+
+  renderInvTable();
+  showToast('✅ 데이터 로드 완료 — ' + invRawData.length + '개 SKU · ' + invWeeks.length + '개 주차');
+}
+
+function getInvWeekData() {
+  const sel = document.getElementById('invWeekSelect');
+  const week = sel ? sel.value : 'latest';
+  const targetWeek = (week === 'latest') ? invWeeks[invWeeks.length-1] : week;
+  return { targetWeek, data: invRawData };
+}
+
+function setInvFilter(type) {
+  invCurrentFilter = type;
+  ['all','active','danger'].forEach(t => {
+    const btn = document.getElementById('if'+t.charAt(0).toUpperCase()+t.slice(1));
+    if(btn) { btn.style.background = t===type ? 'var(--navy)' : 'var(--surface)'; btn.style.color = t===type ? '#fff' : 'var(--t3)'; }
+  });
+  renderInvTable();
+}
+
+function renderInvTable() {
+  if(invRawData.length === 0) return;
+  const { targetWeek, data } = getInvWeekData();
+  if(!targetWeek) return;
+
+  const search = (document.getElementById('invSearch')?.value||'').toLowerCase();
+  const chans = invHeaders.uniqueChannels || [];
+
+  // 필터 적용
+  let filtered = data.filter(r => {
+    const matchSearch = !search || r.name.toLowerCase().includes(search) || r.color.toLowerCase().includes(search);
+    const total = r.weeks[targetWeek]?._total || 0;
+    const matchFilter = invCurrentFilter==='all' || (invCurrentFilter==='active'&&total>0) || (invCurrentFilter==='danger'&&total===0);
+    return matchSearch && matchFilter;
+  });
+
+  // KPI 업데이트
+  const allTotals = data.map(r => r.weeks[targetWeek]?._total||0);
+  const weekTotal = allTotals.reduce((s,v)=>s+v,0);
+  const zeroQty = allTotals.filter(v=>v===0).length;
+  const activeCh = chans.filter(ch => data.some(r=>(r.weeks[targetWeek]?.[ch]||0)>0)).length;
+
+  const upd = (id, html) => { const el=document.getElementById(id); if(el) el.innerHTML=html; };
+  upd('inv-total-sku', `${data.length}<span class="kpi-unit">개</span>`);
+  upd('inv-week-qty', `${weekTotal.toLocaleString()}<span class="kpi-unit">개</span>`);
+  upd('inv-zero-qty', `${zeroQty}<span class="kpi-unit">개</span>`);
+  upd('inv-ch-cnt', `${activeCh}<span class="kpi-unit">개</span>`);
+  upd('inv-total-sub', `${targetWeek} 기준`);
+  upd('inv-week-sub', `${targetWeek} · ${chans.length}개 채널`);
+
+  // 테이블 헤더
+  const thead = document.getElementById('invThead');
+  if(thead) {
+    thead.innerHTML = `<tr>
+      <th style="min-width:120px">품목명</th>
+      <th>색상</th>
+      ${chans.map(ch=>`<th style="text-align:right;min-width:60px">${ch}</th>`).join('')}
+      <th style="text-align:right;background:rgba(0,45,94,0.05);font-weight:800">합계</th>
+    </tr>`;
+  }
+
+  // 테이블 바디
+  const tbody = document.getElementById('invTbody');
+  if(tbody) {
+    if(filtered.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="${chans.length+3}" style="padding:24px;text-align:center;color:var(--t3)">검색 결과가 없습니다</td></tr>`;
+    } else {
+      tbody.innerHTML = filtered.map(r => {
+        const wData = r.weeks[targetWeek] || {};
+        const total = wData._total || 0;
+        const rowStyle = total === 0 ? 'opacity:0.55' : '';
+        return `<tr style="${rowStyle}">
+          <td class="td-name">${r.name}</td>
+          <td style="color:var(--t2)">${r.color}</td>
+          ${chans.map(ch => {
+            const v = wData[ch]||0;
+            const bg = v>0 ? `background:rgba(0,122,255,${Math.min(0.15,v/50*0.15+0.03)})` : '';
+            return `<td class="td-right" style="${bg};font-family:Montserrat,sans-serif;font-size:12px">${v>0?v:''}</td>`;
+          }).join('')}
+          <td class="td-right" style="font-family:Montserrat,sans-serif;font-weight:800;background:rgba(0,45,94,0.04);color:${total>0?'var(--blue)':'var(--t3)'}">${total||'-'}</td>
+        </tr>`;
+      }).join('');
+    }
+  }
+
+  // UI 상태 업데이트
+  const filterBar = document.getElementById('invFilterBar');
+  const tableCard = document.getElementById('invTableCard');
+  const loadMsg = document.getElementById('invLoadingMsg');
+  if(filterBar) filterBar.style.display = 'block';
+  if(tableCard) tableCard.style.display = 'block';
+  if(loadMsg) loadMsg.style.display = 'none';
+
+  // 업데이트 배너 갱신
+  const now = new Date();
+  const timeStr = now.toLocaleDateString('ko-KR',{year:'numeric',month:'2-digit',day:'2-digit'}) + ' ' + now.toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  const upEl = document.getElementById('invLastUpdate');
+  const dot = document.getElementById('invStatusDot');
+  const info = document.getElementById('invUploadedInfo');
+  const skuEl = document.getElementById('invSkuCount');
+  const wkEl = document.getElementById('invWeekCount');
+  if(upEl) {
+    upEl.textContent = '마지막 업데이트: ' + timeStr;
+    upEl.style.color = 'var(--teal)';
+  }
+  if(dot) dot.style.background = 'var(--teal)';
+  if(info) info.style.display = 'block';
+  if(skuEl) skuEl.textContent = invRawData.length + '개 SKU';
+  if(wkEl) wkEl.textContent = invWeeks.length + '개 주차';
+  // 가이드는 유지 (항상 보임 - 다음번 업데이트 안내용)
+  const guide = document.getElementById('invUploadGuide');
+  // 가이드 축소 (데이터 있으면 접혀있게)
+  if(guide && invRawData.length > 0) {
+    const inner = guide.querySelector('div');
+    if(inner) inner.style.padding = '14px 20px';
+    // 스텝 그리드 숨기기
+    const steps = guide.querySelector('[style*="grid-template-columns"]');
+    if(steps) steps.style.display = 'none';
+    // 안내문구만 남기기
+    const desc = guide.querySelector('[style*="background:rgba(255,255,255,.06)"]');
+    if(desc) desc.style.marginTop = '0';
+    const title = guide.querySelector('[style*="margin-bottom:18px"]');
+    if(title) {
+      title.style.marginBottom = '12px';
+      const uploadBtn = guide.querySelector('label');
+      if(uploadBtn) { uploadBtn.style.display = 'inline-flex'; }
+    }
+  }
+}
+
+// 재고 엑셀 내보내기
+function exportInvExcel() {
+  if(invRawData.length === 0) { showToast('❌ 먼저 시트를 새로고침해주세요'); return; }
+  const { targetWeek } = getInvWeekData();
+  const chans = invHeaders.uniqueChannels || [];
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('ko-KR',{year:'numeric',month:'2-digit',day:'2-digit'}).replace(/\. /g,'-').replace('.','');
+
+  const sheet = [
+    ['품목명','색상',...chans,'합계','주차'],
+    ...invRawData.map(r => {
+      const wData = r.weeks[targetWeek]||{};
+      return [r.name, r.color, ...chans.map(ch=>wData[ch]||0), wData._total||0, targetWeek];
+    })
+  ];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(sheet), '재고현황');
+  XLSX.writeFile(wb, `MELIENS_재고관리_${targetWeek||dateStr}.xlsx`);
+  showToast('✅ 재고 현황 엑셀 다운로드 완료');
+}
+
+// 수동 CSV/엑셀 업로드 처리
+function handleInvManualUpload(event) {
+  const file = event.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      if(file.name.endsWith('.csv')) {
+        processInventoryCSV(e.target.result);
+      } else {
+        // 엑셀 파일
+        const data = new Uint8Array(e.target.result);
+        const wb = XLSX.read(data, {type:'array'});
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const csv = XLSX.utils.sheet_to_csv(ws);
+        processInventoryCSV(csv);
+      }
+    } catch(err) {
+      showToast('❌ 파일 읽기 오류: ' + err.message);
+    }
+  };
+  if(file.name.endsWith('.csv')) {
+    reader.readAsText(file, 'UTF-8');
+  } else {
+    reader.readAsArrayBuffer(file);
+  }
+}
+
+// spin 애니메이션
+const spinStyle = document.createElement('style');
+spinStyle.textContent = '@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}';
+document.head.appendChild(spinStyle);
+
+// ── INIT ──
+window.addEventListener('DOMContentLoaded', ()=>{
+  // 오늘 날짜 + 주차 범위
+  const today = new Date();
+  const dateEl = document.getElementById('todayDate');
+  if(dateEl) dateEl.textContent = today.toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric',weekday:'short'});
+  const wr = getWeekRange();
+  const pageDateEl = document.getElementById('pageDate');
+  if(pageDateEl) pageDateEl.textContent = wr.label;
+
+  // 목표 로드 & 렌더
+  loadGoals();
+
+  drawHomeChart();
+  buildHeatmap('homeHeatmap');
+  buildSalesTable();
+  buildStockTable();
+  buildAdsTable();
+  buildB2B();
+  buildAssets();
+  renderGoalBars();
+
+  // KPI 초기값 원 단위로 표시
+  const revEl = document.getElementById('val-revenue');
+  const marEl = document.getElementById('val-margin');
+  if(revEl) revEl.innerHTML = '₩84,700,000<span class="kpi-unit">원</span>';
+  if(marEl) marEl.innerHTML = '₩23,100,000<span class="kpi-unit">원</span>';
+});
+
+// ── PRINT STYLE ──
+const ps=document.createElement('style');
+ps.textContent=`@media print{.sidebar,.float-banner,.topbar .btn{display:none!important}.main{margin:0;width:100%}.content{padding:10px}.page{display:block!important}}`;
+document.head.appendChild(ps);
+</script>
+</body>
+</html>
