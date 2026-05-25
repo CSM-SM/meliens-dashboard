@@ -747,46 +747,44 @@ tbody tr:hover td{background:var(--surface2)}
         </div>
       </div>
 
-      <!-- KPI 카드 (데이터 있을 때) -->
+      <!-- KPI 카드 -->
       <div class="grid-4" style="margin-bottom:16px" id="invKpiArea">
         <div class="kpi-card"><div class="kpi-accent" style="background:var(--blue)"></div>
           <div class="kpi-label">총 SKU 수</div>
           <div class="kpi-value" id="inv-total-sku">--<span class="kpi-unit">개</span></div>
           <div class="kpi-change neutral" id="inv-total-sub">업로드 대기</div>
         </div>
-        <div class="kpi-card"><div class="kpi-accent" style="background:var(--teal)"></div>
-          <div class="kpi-label">이번 주 총 판매</div>
-          <div class="kpi-value" id="inv-week-qty">--<span class="kpi-unit">개</span></div>
-          <div class="kpi-change up" id="inv-week-sub">전채널 합계</div>
-        </div>
-        <div class="kpi-card" onclick="setInvFilter('danger')" style="cursor:pointer" onmouseenter="this.style.boxShadow='0 4px 20px rgba(255,75,75,0.2)'" onmouseleave="this.style.boxShadow=''">
+        <div class="kpi-card" onclick="setInvFilter('order')" style="cursor:pointer" onmouseenter="this.style.boxShadow='0 4px 20px rgba(255,75,75,0.2)'" onmouseleave="this.style.boxShadow=''">
           <div class="kpi-accent" style="background:var(--red)"></div>
-          <div class="kpi-label">판매 없음 SKU <span style="font-size:10px;color:var(--red)">▶ 클릭필터</span></div>
-          <div class="kpi-value" id="inv-zero-qty">--<span class="kpi-unit">개</span></div>
-          <div class="kpi-change down">이번 주 판매 0건</div>
+          <div class="kpi-label">발주 필요 <span style="font-size:10px;color:var(--red)">▶ 클릭필터</span></div>
+          <div class="kpi-value" id="inv-order-cnt">--<span class="kpi-unit">개</span></div>
+          <div class="kpi-change down" id="inv-order-sub">즉시 발주 필요</div>
         </div>
-        <div class="kpi-card"><div class="kpi-accent" style="background:var(--purple)"></div>
-          <div class="kpi-label">활성 채널 수</div>
-          <div class="kpi-value" id="inv-ch-cnt">--<span class="kpi-unit">개</span></div>
-          <div class="kpi-change neutral" id="inv-ch-sub">판매 발생 채널</div>
+        <div class="kpi-card" onclick="setInvFilter('normal')" style="cursor:pointer" onmouseenter="this.style.boxShadow='0 4px 20px rgba(17,202,160,0.2)'" onmouseleave="this.style.boxShadow=''">
+          <div class="kpi-accent" style="background:var(--teal)"></div>
+          <div class="kpi-label">정상 재고 <span style="font-size:10px;color:var(--teal)">▶ 클릭필터</span></div>
+          <div class="kpi-value" id="inv-normal-cnt">--<span class="kpi-unit">개</span></div>
+          <div class="kpi-change up" id="inv-normal-sub">재고 충분</div>
+        </div>
+        <div class="kpi-card" onclick="setInvFilter('discontinued')" style="cursor:pointer" onmouseenter="this.style.boxShadow='0 4px 20px rgba(108,92,231,0.2)'" onmouseleave="this.style.boxShadow=''">
+          <div class="kpi-accent" style="background:var(--purple)"></div>
+          <div class="kpi-label">단종 SKU <span style="font-size:10px;color:var(--purple)">▶ 클릭필터</span></div>
+          <div class="kpi-value" id="inv-disc-cnt">--<span class="kpi-unit">개</span></div>
+          <div class="kpi-change neutral" id="inv-disc-sub">단종 처리 중</div>
         </div>
       </div>
 
-      <!-- 주차 선택 + 검색 + 필터 -->
-      <div class="card" style="margin-bottom:14px;padding:14px 18px" id="invFilterBar" style="display:none">
+      <!-- 검색 + 필터 -->
+      <div class="card" style="margin-bottom:14px;padding:14px 18px" id="invFilterBar">
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-          <select id="invWeekSelect" onchange="renderInvTable()" style="font-size:12px;padding:7px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--t1);font-family:Montserrat,sans-serif;font-weight:600">
-            <option value="latest">최신 주차</option>
-          </select>
-          <input id="invSearch" type="text" placeholder="품목명 또는 색상 검색..." oninput="renderInvTable()"
+          <input id="invSearch" type="text" placeholder="SKU 또는 상품명 검색..." oninput="renderInvTable()"
             style="flex:1;min-width:160px;font-size:13px;padding:7px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--t1)">
-          <div style="display:flex;gap:5px">
+          <div style="display:flex;gap:5px;flex-wrap:wrap">
             <button onclick="setInvFilter('all')" id="ifAll" style="font-size:11px;padding:5px 12px;border-radius:20px;border:1px solid var(--border);background:var(--navy);color:#fff;cursor:pointer;font-weight:700;font-family:Montserrat,sans-serif">전체</button>
-            <button onclick="setInvFilter('active')" id="ifActive" style="font-size:11px;padding:5px 12px;border-radius:20px;border:1px solid var(--border);background:var(--surface);color:var(--t3);cursor:pointer;font-weight:700;font-family:Montserrat,sans-serif">판매있음</button>
-            <button onclick="setInvFilter('danger')" id="ifDanger" style="font-size:11px;padding:5px 12px;border-radius:20px;border:1px solid var(--border);background:var(--surface);color:var(--t3);cursor:pointer;font-weight:700;font-family:Montserrat,sans-serif">판매없음</button>
-            <button onclick="document.getElementById('invManualFile2').click()" style="font-size:11px;padding:5px 12px;border-radius:20px;border:1px solid var(--teal);background:var(--surface);color:var(--teal);cursor:pointer;font-weight:700;font-family:Montserrat,sans-serif">
-              ↑ 재업로드
-            </button>
+            <button onclick="setInvFilter('order')" id="ifOrder" style="font-size:11px;padding:5px 12px;border-radius:20px;border:1px solid var(--border);background:var(--surface);color:var(--t3);cursor:pointer;font-weight:700;font-family:Montserrat,sans-serif">발주필요</button>
+            <button onclick="setInvFilter('normal')" id="ifNormal" style="font-size:11px;padding:5px 12px;border-radius:20px;border:1px solid var(--border);background:var(--surface);color:var(--t3);cursor:pointer;font-weight:700;font-family:Montserrat,sans-serif">정상</button>
+            <button onclick="setInvFilter('discontinued')" id="ifDiscontinued" style="font-size:11px;padding:5px 12px;border-radius:20px;border:1px solid var(--border);background:var(--surface);color:var(--t3);cursor:pointer;font-weight:700;font-family:Montserrat,sans-serif">단종</button>
+            <button onclick="document.getElementById('invManualFile2').click()" style="font-size:11px;padding:5px 12px;border-radius:20px;border:1px solid var(--teal);background:var(--surface);color:var(--teal);cursor:pointer;font-weight:700;font-family:Montserrat,sans-serif">↑ 재업로드</button>
             <input type="file" id="invManualFile2" accept=".csv,.xlsx,.xls" style="display:none" onchange="handleInvManualUpload(event)">
           </div>
         </div>
@@ -827,8 +825,23 @@ tbody tr:hover td{background:var(--surface2)}
 
     <!-- ═══ UPLOAD PAGE ═══ -->
     <div class="page" id="page-upload">
-      <div class="section-title">데이터 업로드 센터</div>
-      <div class="section-sub">각 채널에서 다운로드한 정산 원본 파일을 수정 없이 그대로 업로드하세요. 스마트 매핑이 자동으로 처리합니다.</div>
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:4px;flex-wrap:wrap;gap:10px">
+        <div class="section-title">데이터 업로드 센터</div>
+        <button onclick="clearAllData()" style="display:flex;align-items:center;gap:6px;padding:7px 14px;background:var(--surface);border:1px solid var(--red);color:var(--red);border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">
+          <svg style="width:13px;height:13px;stroke:var(--red);fill:none;stroke-width:2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+          저장 데이터 초기화
+        </button>
+      </div>
+      <div class="section-sub" style="margin-bottom:16px">각 채널에서 다운로드한 정산 원본 파일을 수정 없이 그대로 업로드하세요. 업로드한 데이터는 브라우저에 저장되어 새로고침해도 유지됩니다.</div>
+      <!-- 저장 상태 배너 -->
+      <div id="storageStatusBanner" style="margin-bottom:16px;padding:12px 16px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <div style="display:flex;align-items:center;gap:7px">
+          <svg style="width:14px;height:14px;stroke:var(--teal);fill:none;stroke-width:2" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></svg>
+          <span style="font-size:12px;font-weight:700;color:var(--t1)">브라우저 자동 저장 활성화</span>
+        </div>
+        <span style="font-size:11px;color:var(--t3)">새로고침 · 탭 닫기 후 재접속해도 데이터가 유지됩니다</span>
+        <div id="storageSizeInfo" style="margin-left:auto;font-size:11px;color:var(--t3)"></div>
+      </div>
 
       <div class="grid-2" style="margin-bottom:20px">
         <div class="card">
@@ -1563,6 +1576,55 @@ function parseAdsExcel(json, headers, filename) {
 // ════════════════════════════════════════════════
 let uploadedSalesData = [];
 let uploadedAdsData   = [];
+
+// ── localStorage 데이터 영속성 ──
+const STORAGE_KEYS = {
+  sales: 'meliens_sales_data',
+  ads:   'meliens_ads_data',
+  inv:   'meliens_inv_data',
+  invWeeks: 'meliens_inv_weeks',
+  invHeaders: 'meliens_inv_headers',
+  uploadHistory: 'meliens_upload_history',
+};
+const MAX_STORAGE_MB = 4; // localStorage 최대 4MB 사용
+
+function saveToStorage(key, data) {
+  try {
+    const json = JSON.stringify(data);
+    const mb = (json.length * 2) / 1024 / 1024;
+    if(mb > MAX_STORAGE_MB) {
+      showToast('⚠ 데이터가 너무 커서 저장하지 못했습니다 (' + mb.toFixed(1) + 'MB)');
+      return false;
+    }
+    localStorage.setItem(key, json);
+    return true;
+  } catch(e) {
+    console.warn('localStorage 저장 실패:', e);
+    return false;
+  }
+}
+
+function loadFromStorage(key) {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : null;
+  } catch(e) {
+    return null;
+  }
+}
+
+function clearAllData() {
+  if(!confirm('저장된 모든 데이터를 삭제할까요?')) return;
+  Object.values(STORAGE_KEYS).forEach(k => localStorage.removeItem(k));
+  uploadedSalesData = [];
+  uploadedAdsData = [];
+  invRawData = [];
+  invWeeks = [];
+  invHeaders = {};
+  applyDataToDashboard();
+  buildSalesTable();
+  showToast('🗑 저장된 데이터를 모두 삭제했습니다');
+}
 
 function applyDataToDashboard() {
   const data = uploadedSalesData.length ? uploadedSalesData : salesData;
@@ -2341,52 +2403,219 @@ async function loadInventoryFromSheet() {
 }
 
 function processInventoryCSV(text) {
+  // BOM 제거
+  if(text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
+
+  const lines = text.split(/\r?\n/);
+
+  // ── 파일 타입 자동 감지 ──
+  // 재고현황 파일: '바코드' 컬럼 있음
+  // 물류 대시보드(판매수량) 파일: 주차별 채널 컬럼
+  const headerLineIdx = lines.findIndex(l => l.includes('바코드') || l.includes('상품명+옵션'));
+
+  if(headerLineIdx !== -1 && lines[headerLineIdx].includes('바코드')) {
+    // ── 재고현황 파일 처리 ──
+    processStockStatusCSV(lines, headerLineIdx);
+  } else {
+    // ── 물류 대시보드(판매수량) 파일 처리 ──
+    processSalesChannelCSV(text);
+  }
+}
+
+// ── 재고현황 파일 파서 ──
+function processStockStatusCSV(lines, headerIdx) {
+  function parseNum(v) {
+    if(!v || !v.trim()) return 0;
+    const n = parseInt(v.replace(/,/g,'').trim());
+    return isNaN(n) ? 0 : n;
+  }
+
+  invRawData = [];
+  for(let i = headerIdx + 1; i < lines.length; i++) {
+    const line = lines[i];
+    if(!line.trim()) continue;
+    const row = parseCSVLine(line);
+    if(row.length < 5) continue;
+    const barcode = row[1]?.trim();
+    if(!barcode || barcode === '바코드') continue;
+
+    invRawData.push({
+      barcode:      barcode,
+      category:     row[2]?.trim() || '',
+      sku:          row[3]?.trim() || '',
+      name:         row[4]?.trim() || '',
+      cost:         parseNum(row[5]),
+      stock:        parseNum(row[6]),
+      stockValue:   parseNum(row[7]),
+      daysLeft:     parseNum(row[8]),
+      dailyOut:     parseNum(row[9]),
+      dailyOutB2C:  parseNum(row[10]),
+      orderPoint:   row[11]?.trim() || '',
+      leadDays:     parseNum(row[12]),
+      orderQty:     parseNum(row[13]),
+      discontinued: row[14]?.trim() || '',
+      badStock:     parseNum(row[16]),
+      badStockValue:parseNum(row[17]),
+      optimalStock: parseNum(row[19]),
+      // 파일 타입 표시
+      _fileType: 'stock'
+    });
+  }
+
+  invWeeks = ['재고현황'];
+  invHeaders = { uniqueChannels: [], fileType: 'stock' };
+
+  renderInvTableStock();
+  saveToStorage(STORAGE_KEYS.inv, invRawData);
+  saveToStorage(STORAGE_KEYS.invWeeks, invWeeks);
+  saveToStorage(STORAGE_KEYS.invHeaders, invHeaders);
+  showToast('✅ 재고현황 데이터 로드 완료 — ' + invRawData.length + '개 SKU');
+
+  // UI 업데이트
+  const filterBar = document.getElementById('invFilterBar');
+  const tableCard = document.getElementById('invTableCard');
+  const loadMsg = document.getElementById('invLoadingMsg');
+  if(filterBar) filterBar.style.display = 'block';
+  if(tableCard) tableCard.style.display = 'block';
+  if(loadMsg) loadMsg.style.display = 'none';
+
+  const now = new Date();
+  const timeStr = now.toLocaleDateString('ko-KR',{year:'numeric',month:'2-digit',day:'2-digit'}) + ' ' + now.toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  const upEl = document.getElementById('invLastUpdate');
+  const dot = document.getElementById('invStatusDot');
+  const info = document.getElementById('invUploadedInfo');
+  if(upEl) { upEl.textContent = '마지막 업데이트: ' + timeStr; upEl.style.color = 'var(--teal)'; }
+  if(dot) dot.style.background = 'var(--teal)';
+  if(info) { info.style.display='block'; document.getElementById('invSkuCount').textContent = invRawData.length+'개 SKU'; document.getElementById('invWeekCount').textContent = '재고현황'; }
+}
+
+// ── CSV 한 줄 파서 ──
+function parseCSVLine(line) {
+  const result = [];
+  let cur = '', inQ = false;
+  for(let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if(inQ) {
+      if(c === '"' && line[i+1] === '"') { cur += '"'; i++; }
+      else if(c === '"') inQ = false;
+      else cur += c;
+    } else {
+      if(c === '"') inQ = true;
+      else if(c === ',') { result.push(cur); cur = ''; }
+      else cur += c;
+    }
+  }
+  result.push(cur);
+  return result;
+}
+
+// ── 재고현황 테이블 렌더 ──
+function renderInvTableStock() {
+  const search = (document.getElementById('invSearch')?.value || '').toLowerCase();
+  const filter = invCurrentFilter || 'all';
+
+  let data = invRawData.filter(r => {
+    const matchSearch = !search || r.name.toLowerCase().includes(search) || r.sku.toLowerCase().includes(search) || r.category.toLowerCase().includes(search);
+    if(!matchSearch) return false;
+    if(filter === 'order') return r.orderPoint === '발주필요';
+    if(filter === 'normal') return r.orderPoint !== '발주필요' && r.discontinued !== '단종';
+    if(filter === 'discontinued') return r.discontinued === '단종';
+    return true;
+  });
+
+  // KPI 업데이트
+  const total = invRawData.length;
+  const orderNeeded = invRawData.filter(r => r.orderPoint === '발주필요').length;
+  const normal = invRawData.filter(r => r.orderPoint !== '발주필요' && r.discontinued !== '단종').length;
+  const disc = invRawData.filter(r => r.discontinued === '단종').length;
+
+  const upd = (id, html) => { const el=document.getElementById(id); if(el) el.innerHTML=html; };
+  upd('inv-total-sku', `${total}<span class="kpi-unit">개</span>`);
+  upd('inv-order-cnt', `${orderNeeded}<span class="kpi-unit">개</span>`);
+  upd('inv-normal-cnt', `${normal}<span class="kpi-unit">개</span>`);
+  upd('inv-disc-cnt', `${disc}<span class="kpi-unit">개</span>`);
+  upd('inv-total-sub', `총 ${total}개 SKU 관리 중`);
+  upd('inv-order-sub', `전체의 ${Math.round(orderNeeded/total*100)}%`);
+  upd('inv-normal-sub', `재고 충분`);
+  upd('inv-disc-sub', `단종 처리 중`);
+
+  // 테이블 헤더
+  const thead = document.getElementById('invThead');
+  if(thead) thead.innerHTML = `<tr>
+    <th>카테고리</th><th>SKU</th><th style="min-width:180px">상품명</th>
+    <th style="text-align:right">원가</th><th style="text-align:right">가용재고</th>
+    <th style="text-align:right">재고금액</th><th style="text-align:right">판매가능일수</th>
+    <th style="text-align:right">일평균출고</th><th style="text-align:right">납기일</th>
+    <th style="text-align:right">발주수량</th><th>발주시점</th><th>단종</th>
+  </tr>`;
+
+  // 테이블 바디
+  const tbody = document.getElementById('invTbody');
+  if(!tbody) return;
+  if(data.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="12" style="padding:24px;text-align:center;color:var(--t3)">검색 결과가 없습니다</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = data.map(r => {
+    const isOrder = r.orderPoint === '발주필요';
+    const isDisc = r.discontinued === '단종';
+    const daysColor = r.daysLeft <= 7 ? 'var(--red)' : r.daysLeft <= 14 ? 'var(--amber)' : 'var(--teal)';
+    const rowOpacity = isDisc ? 'opacity:0.5' : '';
+    return `<tr style="${rowOpacity}">
+      <td style="font-size:11px;color:var(--t3)">${r.category}</td>
+      <td class="td-sku">${r.sku}</td>
+      <td class="td-name" style="font-size:12px">${r.name}</td>
+      <td class="td-right" style="font-size:11px">₩${r.cost.toLocaleString()}원</td>
+      <td class="td-right" style="font-weight:700;color:${r.stock===0?'var(--red)':r.stock<50?'var(--amber)':'var(--t1)'}">${r.stock.toLocaleString()}</td>
+      <td class="td-right" style="font-size:11px">₩${r.stockValue.toLocaleString()}원</td>
+      <td class="td-right" style="font-weight:700;color:${daysColor}">${r.daysLeft}일</td>
+      <td class="td-right">${r.dailyOut}</td>
+      <td class="td-right" style="font-size:11px">${r.leadDays}일</td>
+      <td class="td-right" style="font-weight:700;color:${isOrder?'var(--red)':'var(--t2)'}">${r.orderQty.toLocaleString()}</td>
+      <td><span style="font-size:10px;padding:3px 8px;border-radius:5px;font-weight:700;font-family:Montserrat,sans-serif;background:${isOrder?'rgba(255,75,75,0.1)':'rgba(17,202,160,0.1)'};color:${isOrder?'var(--red)':'var(--teal)'}">${r.orderPoint||'정상'}</span></td>
+      <td>${isDisc?'<span style="font-size:10px;padding:2px 6px;border-radius:4px;background:rgba(108,92,231,0.1);color:var(--purple);font-weight:700">단종</span>':''}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ── 물류 대시보드(판매수량) 파일 파서 ──
+function processSalesChannelCSV(text) {
   const rows = parseCSV(text);
   if(rows.length < 3) { showToast('❌ 데이터가 없습니다'); return; }
 
-  const weekRow   = rows[0]; // 주차 헤더행 (col2~: 11/1~3(1주차), ...)
-  const headerRow = rows[1]; // 채널명행  (품목명, 색상, 지그재그, 에이블리, ...)
+  const weekRow   = rows[0];
+  const headerRow = rows[1];
 
-  // ── 주차별 컬럼 범위 파악 ──
   const weekMeta = [];
   for(let i=0; i<weekRow.length; i++){
     if(weekRow[i] && weekRow[i].trim()){
-      // 주차명에서 괄호(x주차) 제거
       const wLabel = weekRow[i].trim().replace(/\s*\(\d+주차\)/, '').trim();
       weekMeta.push({ label: wLabel, start: i });
     }
   }
-  // 각 주차의 end 컬럼 = 다음 주차의 start
-  for(let i=0; i<weekMeta.length-1; i++){
-    weekMeta[i].end = weekMeta[i+1].start;
-  }
+  for(let i=0; i<weekMeta.length-1; i++) weekMeta[i].end = weekMeta[i+1].start;
   weekMeta[weekMeta.length-1].end = headerRow.length;
 
-  // ── 각 주차별 채널 목록 파악 (합계 열 제외) ──
   weekMeta.forEach(w => {
     w.channels = [];
     for(let ci=w.start; ci<w.end; ci++){
-      const ch = (headerRow[ci]||'').trim().replace(/[\r\n]/g,''); // 줄바꿈 제거nels.push({ name: ch, col: ci });
+      const ch = (headerRow[ci]||'').trim().replace(/[\r\n]/g,'');
+      if(ch && ch !== '합계') w.channels.push({ name: ch, col: ci });
     }
   });
 
-  // ── 전체 주차 & 채널 통합 목록 ──
   invWeeks = weekMeta.map(w => w.label);
-
-  // 전체 채널 통합 (모든 주차에 걸쳐 등장한 채널들)
   const allChSet = new Set();
   weekMeta.forEach(w => w.channels.forEach(c => allChSet.add(c.name)));
-  const allChannels = Array.from(allChSet);
+  invHeaders = { weekMeta, allChannels: Array.from(allChSet), uniqueChannels: Array.from(allChSet), fileType: 'sales' };
 
-  invHeaders = { weekMeta, allChannels, uniqueChannels: allChannels };
-
-  // ── 데이터 행 파싱 (행3~, 품목명 없거나 '합계'인 행 제외) ──
   invRawData = [];
   for(let ri=2; ri<rows.length; ri++){
     const row = rows[ri];
     const name = (row[0]||'').trim();
     if(!name || name === '합계') continue;
-    const item = { name, color: (row[1]||'').trim(), weeks: {} };
+    const item = { name, color: (row[1]||'').trim(), weeks: {}, _fileType: 'sales' };
     weekMeta.forEach(w => {
       const wData = { _total: 0 };
       w.channels.forEach(ch => {
@@ -2400,20 +2629,21 @@ function processInventoryCSV(text) {
     invRawData.push(item);
   }
 
-  // ── 주차 드롭다운 갱신 ──
   const sel = document.getElementById('invWeekSelect');
   if(sel){
     const latestLabel = invWeeks[invWeeks.length-1] || '';
     sel.innerHTML = `<option value="latest">최신 주차 (${latestLabel})</option>`;
     [...invWeeks].reverse().forEach(w => {
       const opt = document.createElement('option');
-      opt.value = w; opt.textContent = w;
-      sel.appendChild(opt);
+      opt.value = w; opt.textContent = w; sel.appendChild(opt);
     });
   }
 
   renderInvTable();
-  showToast('✅ 데이터 로드 완료 — ' + invRawData.length + '개 SKU · ' + invWeeks.length + '개 주차');
+  saveToStorage(STORAGE_KEYS.inv, invRawData);
+  saveToStorage(STORAGE_KEYS.invWeeks, invWeeks);
+  saveToStorage(STORAGE_KEYS.invHeaders, invHeaders);
+  showToast('✅ 판매수량 데이터 로드 완료 — ' + invRawData.length + '개 SKU · ' + invWeeks.length + '개 주차');
 }
 
 function getInvWeekData() {
@@ -2425,8 +2655,9 @@ function getInvWeekData() {
 
 function setInvFilter(type) {
   invCurrentFilter = type;
-  ['all','active','danger'].forEach(t => {
-    const btn = document.getElementById('if'+t.charAt(0).toUpperCase()+t.slice(1));
+  ['all','order','normal','discontinued','active','danger'].forEach(t => {
+    const key = t==='order'?'Order':t==='normal'?'Normal':t==='discontinued'?'Discontinued':t.charAt(0).toUpperCase()+t.slice(1);
+    const btn = document.getElementById('if'+key);
     if(btn) { btn.style.background = t===type ? 'var(--navy)' : 'var(--surface)'; btn.style.color = t===type ? '#fff' : 'var(--t3)'; }
   });
   renderInvTable();
@@ -2434,6 +2665,11 @@ function setInvFilter(type) {
 
 function renderInvTable() {
   if(invRawData.length === 0) return;
+  // 파일 타입에 따라 다른 렌더러 호출
+  if(invRawData[0]?._fileType === 'stock' || (invHeaders && invHeaders.fileType === 'stock')) {
+    renderInvTableStock();
+    return;
+  }
   const { targetWeek, data } = getInvWeekData();
   if(!targetWeek) return;
 
@@ -2609,6 +2845,57 @@ window.addEventListener('DOMContentLoaded', ()=>{
   // 목표 로드 & 렌더
   loadGoals();
 
+  // ── localStorage에서 이전 데이터 복구 ──
+  const savedSales = loadFromStorage(STORAGE_KEYS.sales);
+  if(savedSales && savedSales.length > 0) {
+    uploadedSalesData = savedSales;
+    showToast('📂 이전 매출 데이터 복구됨 (' + savedSales.length + '개 SKU)');
+  }
+  const savedAds = loadFromStorage(STORAGE_KEYS.ads);
+  if(savedAds && savedAds.length > 0) {
+    uploadedAdsData = savedAds;
+  }
+  const savedInv = loadFromStorage(STORAGE_KEYS.inv);
+  const savedInvWeeks = loadFromStorage(STORAGE_KEYS.invWeeks);
+  const savedInvHeaders = loadFromStorage(STORAGE_KEYS.invHeaders);
+  if(savedInv && savedInv.length > 0) {
+    invRawData = savedInv;
+    invWeeks = savedInvWeeks || [];
+    invHeaders = savedInvHeaders || {};
+    // 주차 드롭다운 복구
+    const sel = document.getElementById('invWeekSelect');
+    if(sel && invWeeks.length > 0) {
+      const latestLabel = invWeeks[invWeeks.length-1] || '';
+      sel.innerHTML = `<option value="latest">최신 주차 (${latestLabel})</option>`;
+      [...invWeeks].reverse().forEach(w => {
+        const opt = document.createElement('option');
+        opt.value = w; opt.textContent = w; sel.appendChild(opt);
+      });
+    }
+    // 업데이트 배너 복구
+    const upEl = document.getElementById('invLastUpdate');
+    const dot = document.getElementById('invStatusDot');
+    const info = document.getElementById('invUploadedInfo');
+    if(upEl) { upEl.textContent = '이전 데이터 복구됨 (' + invRawData.length + '개 SKU)'; upEl.style.color='var(--teal)'; }
+    if(dot) dot.style.background = 'var(--teal)';
+    if(info) { info.style.display='block'; document.getElementById('invSkuCount').textContent=invRawData.length+'개 SKU'; document.getElementById('invWeekCount').textContent=invWeeks.length+'개 주차'; }
+  }
+  // 업로드 히스토리 복구
+  const savedHistory = loadFromStorage(STORAGE_KEYS.uploadHistory);
+  if(savedHistory && savedHistory.length > 0) {
+    const hist = document.getElementById('uploadHistory');
+    if(hist) {
+      const restored = savedHistory.map(item => `
+        <div class="upload-file-item">
+          <svg style="width:16px;height:16px;stroke:#11CAA0;fill:none;stroke-width:2;flex-shrink:0" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          <div class="file-name">${item.name}</div>
+          <div class="file-meta">${item.meta}</div>
+          <div class="file-status">복구됨</div>
+        </div>`).join('');
+      hist.innerHTML = restored + hist.innerHTML;
+    }
+  }
+
   drawHomeChart();
   buildHeatmap('homeHeatmap');
   buildSalesTable();
@@ -2616,13 +2903,16 @@ window.addEventListener('DOMContentLoaded', ()=>{
   buildAdsTable();
   buildB2B();
   buildAssets();
-  renderGoalBars();
 
-  // KPI 초기값 원 단위로 표시
-  const revEl = document.getElementById('val-revenue');
-  const marEl = document.getElementById('val-margin');
-  if(revEl) revEl.innerHTML = '₩84,700,000<span class="kpi-unit">원</span>';
-  if(marEl) marEl.innerHTML = '₩23,100,000<span class="kpi-unit">원</span>';
+  // 저장된 데이터가 있으면 대시보드 즉시 업데이트
+  if(uploadedSalesData.length > 0) {
+    applyDataToDashboard();
+  } else {
+    renderGoalBars();
+  }
+  if(savedInv && savedInv.length > 0) {
+    setTimeout(() => renderInvTable(), 100);
+  }
 });
 
 // ── PRINT STYLE ──
