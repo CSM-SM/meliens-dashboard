@@ -777,7 +777,7 @@ tbody tr:hover td{background:var(--surface2)}
       <!-- 검색 + 필터 -->
       <div class="card" style="margin-bottom:14px;padding:14px 18px" id="invFilterBar">
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-          <input id="invSearch" type="text" placeholder="SKU 또는 상품명 검색..." oninput="renderInvTable()"
+          <input id="invSearch" type="text" placeholder="SKU 또는 상품명 검색..." oninput="invRawData[0]?._fileType==='stock'?renderInvTableStock():renderInvTable()"
             style="flex:1;min-width:160px;font-size:13px;padding:7px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--t1)">
           <div style="display:flex;gap:5px;flex-wrap:wrap">
             <button onclick="setInvFilter('all')" id="ifAll" style="font-size:11px;padding:5px 12px;border-radius:20px;border:1px solid var(--border);background:var(--navy);color:#fff;cursor:pointer;font-weight:700;font-family:Montserrat,sans-serif">전체</button>
@@ -2660,13 +2660,20 @@ function setInvFilter(type) {
     const btn = document.getElementById('if'+key);
     if(btn) { btn.style.background = t===type ? 'var(--navy)' : 'var(--surface)'; btn.style.color = t===type ? '#fff' : 'var(--t3)'; }
   });
-  renderInvTable();
+  if(invRawData[0]?._fileType === 'stock' || (invHeaders && invHeaders.fileType === 'stock')) {
+    renderInvTableStock();
+  } else {
+    renderInvTable();
+  }
 }
 
 function renderInvTable() {
   if(invRawData.length === 0) return;
-  // 파일 타입에 따라 다른 렌더러 호출
-  if(invRawData[0]?._fileType === 'stock' || (invHeaders && invHeaders.fileType === 'stock')) {
+  // 파일 타입 감지 - stock(재고현황) vs sales(판매수량)
+  const isStock = (invRawData[0] && invRawData[0]._fileType === 'stock') ||
+                  (invHeaders && invHeaders.fileType === 'stock') ||
+                  (invRawData[0] && invRawData[0].barcode !== undefined);
+  if(isStock) {
     renderInvTableStock();
     return;
   }
@@ -2911,7 +2918,19 @@ window.addEventListener('DOMContentLoaded', ()=>{
     renderGoalBars();
   }
   if(savedInv && savedInv.length > 0) {
-    setTimeout(() => renderInvTable(), 100);
+    setTimeout(() => {
+      const filterBar = document.getElementById('invFilterBar');
+      const tableCard = document.getElementById('invTableCard');
+      const loadMsg = document.getElementById('invLoadingMsg');
+      if(filterBar) filterBar.style.display = 'block';
+      if(tableCard) tableCard.style.display = 'block';
+      if(loadMsg) loadMsg.style.display = 'none';
+      // stock 타입이면 재고현황 렌더러 호출
+      const isStock = (invRawData[0] && invRawData[0].barcode !== undefined) ||
+                      (invHeaders && invHeaders.fileType === 'stock');
+      if(isStock) renderInvTableStock();
+      else renderInvTable();
+    }, 100);
   }
 });
 
