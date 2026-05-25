@@ -1212,7 +1212,15 @@ function renderSalesTable(data, channel){
     tb.innerHTML=`<tr><td colspan="8" style="padding:24px;text-align:center;color:var(--t3)">해당 채널 데이터가 없습니다.<br><span style="font-size:11px">엑셀 업로드 후 채널이 자동 인식됩니다.</span></td></tr>`;
     return;
   }
-  tb.innerHTML = data.map(r=>{
+
+  // ── 합계 계산 ──
+  const totalQty    = data.reduce((s,r)=>s+r.qty,0);
+  const totalRev    = data.reduce((s,r)=>s+r.rev,0);
+  const totalMargin = data.reduce((s,r)=>s+r.margin,0);
+  const marginRate  = totalRev>0?((totalMargin/totalRev)*100).toFixed(1):0;
+
+  // ── 데이터 행 ──
+  const rows = data.map(r=>{
     const danger=r.stock>0&&r.stock<100;
     const stockPct=Math.min(100,(r.stock||0)/5);
     const chBadge = r.channel ? `<span style="font-size:9px;padding:2px 5px;border-radius:4px;background:rgba(0,122,255,0.1);color:var(--blue);font-family:Montserrat,sans-serif;margin-left:4px">${r.channel}</span>` : '';
@@ -1227,6 +1235,26 @@ function renderSalesTable(data, channel){
       <td><div class="stock-bar"><div class="stock-mini"><div class="stock-mini-fill" style="width:${stockPct}%;background:${danger?'#FF4B4B':'#11CAA0'}"></div></div><span class="${danger?'td-danger':''}">${r.stock||'-'}</span></div></td>
     </tr>`;
   }).join('');
+
+  // ── 합계 행 (항상 표시) ──
+  const totalRow = `<tr style="background:var(--surface2);border-top:2px solid var(--border);font-weight:700">
+    <td class="td-name" style="color:var(--navy)">
+      <span style="font-family:Montserrat,sans-serif;font-size:11px;background:var(--navy);color:#fff;padding:2px 8px;border-radius:4px;margin-right:6px">합계</span>
+      ${data.length}개 SKU
+    </td>
+    <td></td>
+    <td></td>
+    <td class="td-right" style="font-family:Montserrat,sans-serif;color:var(--blue)">${totalQty.toLocaleString()}</td>
+    <td></td>
+    <td class="td-right" style="font-family:Montserrat,sans-serif;color:var(--blue)">₩${Math.round(totalRev).toLocaleString()}원</td>
+    <td class="td-right" style="font-family:Montserrat,sans-serif;color:var(--teal)">
+      ₩${Math.round(totalMargin).toLocaleString()}원
+      <span style="font-size:10px;color:var(--t3);font-weight:400;margin-left:4px">(${marginRate}%)</span>
+    </td>
+    <td></td>
+  </tr>`;
+
+  tb.innerHTML = rows + totalRow;
 }
 
 // ── 목표 설정 ──
