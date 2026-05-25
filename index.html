@@ -2523,6 +2523,21 @@ function renderInvTableStock() {
     return true;
   });
 
+  // 단종 상품은 항상 맨 하단으로 정렬
+  // 단종이 아닌 것 먼저, 단종인 것 나중
+  // 단종이 아닌 것 안에서는 발주필요 → 정상 순
+  data.sort((a, b) => {
+    const aDisc = a.discontinued === '단종' ? 1 : 0;
+    const bDisc = b.discontinued === '단종' ? 1 : 0;
+    if(aDisc !== bDisc) return aDisc - bDisc;
+    // 단종 아닌 것끼리: 발주필요 먼저
+    const aOrder = a.orderPoint === '발주필요' ? 0 : 1;
+    const bOrder = b.orderPoint === '발주필요' ? 0 : 1;
+    if(aOrder !== bOrder) return aOrder - bOrder;
+    // 발주필요끼리: 판매가능일수 적은 것 먼저 (긴급도 순)
+    return a.daysLeft - b.daysLeft;
+  });
+
   // KPI 업데이트
   const total = invRawData.length;
   const orderNeeded = invRawData.filter(r => r.orderPoint === '발주필요').length;
