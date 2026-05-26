@@ -74,7 +74,88 @@ button{font-family:inherit;cursor:pointer;border:none;background:none}
 .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 .grid-2-1{display:grid;grid-template-columns:1fr 340px;gap:14px}
 @media(max-width:1100px){.grid-4{grid-template-columns:repeat(2,1fr)}.grid-2-1{grid-template-columns:1fr}}
-@media(max-width:768px){.grid-4,.grid-3,.grid-2{grid-template-columns:1fr}.sidebar{position:fixed;z-index:200;height:100%;transform:translateX(-100%)}.sidebar.mobile-open{transform:none}.content{padding:16px}}
+
+/* ── 태블릿 (768px~1024px) ── */
+@media(max-width:1024px){
+  :root{--sidebar-w:200px}
+  .kpi-value{font-size:22px}
+  .topbar-right .btn-outline span{display:none}
+  .topbar-right .btn-outline{padding:6px 8px}
+}
+
+/* ── 모바일 (768px 이하) ── */
+@media(max-width:768px){
+  :root{--sidebar-w:260px;--topbar-h:56px}
+
+  /* 레이아웃 */
+  .app{flex-direction:column}
+  .sidebar{
+    position:fixed;left:0;top:0;z-index:300;
+    height:100vh;width:var(--sidebar-w)!important;
+    transform:translateX(-100%);
+    transition:transform .25s ease;
+    box-shadow:4px 0 20px rgba(0,0,0,0.3);
+  }
+  .sidebar.mobile-open{transform:translateX(0)}
+  .main{width:100%;min-width:0}
+  .content{padding:12px;overflow-x:hidden}
+
+  /* 그리드 */
+  .grid-4,.grid-3,.grid-2{grid-template-columns:1fr}
+
+  /* 상단바 */
+  .topbar{padding:0 12px;gap:8px}
+  .topbar-title{font-size:13px}
+  .topbar-sub{font-size:10px}
+  #todayDate{display:none}
+  .topbar-right{gap:6px}
+  .topbar-right .btn-outline span{display:none}
+  .topbar-right .btn-outline{padding:5px 7px}
+
+  /* KPI 카드 */
+  .kpi-card{padding:14px}
+  .kpi-value{font-size:20px}
+  .kpi-label{font-size:11px}
+
+  /* 카드 */
+  .card{padding:14px;border-radius:10px}
+
+  /* 테이블 스크롤 */
+  .table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  table{min-width:600px}
+
+  /* 채널 탭 */
+  .ch-tabs{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;gap:4px;padding-bottom:4px}
+  .ch-tab{flex-shrink:0;font-size:11px;padding:5px 10px}
+
+  /* 사이드바 오버레이 */
+  .sidebar-overlay{
+    display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);
+    z-index:299;opacity:0;transition:opacity .25s;
+  }
+  .sidebar-overlay.active{display:block;opacity:1}
+
+  /* AI 브리핑 */
+  .ai-card{min-width:0}
+
+  /* 필터탭 */
+  .filter-tabs{gap:1px}
+  .ftab{font-size:11px;padding:5px 8px}
+
+  /* 섹션 타이틀 */
+  .section-title{font-size:16px}
+
+  /* B2B 모달 */
+  #b2bModal > div{margin:10px;max-height:calc(100vh - 20px)}
+}
+
+/* ── 작은 모바일 (480px 이하) ── */
+@media(max-width:480px){
+  .kpi-value{font-size:18px}
+  .content{padding:8px}
+  .card{padding:12px}
+  .topbar{padding:0 8px}
+}
 
 /* ── CARDS ── */
 .card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px}
@@ -301,6 +382,9 @@ tbody tr:hover td{background:var(--surface2)}
     </div>
   </div>
 </nav>
+
+<!-- ── MOBILE OVERLAY ── -->
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeMobileSidebar()"></div>
 
 <!-- ── MAIN ── -->
 <div class="main">
@@ -1101,6 +1185,8 @@ function getTextColor(){ return isDark ? '#7A90A8' : '#8A9BB0'; }
 let currentPage = 'home';
 function showPage(id, el){
   currentPage = id;
+  // 모바일에서 페이지 이동 시 사이드바 자동 닫기
+  if(window.innerWidth <= 768) closeMobileSidebar();
   // 현재 페이지 저장 (새로고침 시 복구용)
   try { localStorage.setItem('meliens_current_page', id); } catch(e){}
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
@@ -1116,7 +1202,22 @@ function showPage(id, el){
 }
 
 function toggleSidebar(){
-  document.getElementById('sidebar').classList.toggle('collapsed');
+  const sidebar = document.getElementById('sidebar');
+  const overlay = document.getElementById('sidebarOverlay');
+  if(window.innerWidth <= 768) {
+    // 모바일: 슬라이드 인/아웃
+    const isOpen = sidebar.classList.toggle('mobile-open');
+    if(overlay) overlay.classList.toggle('active', isOpen);
+  } else {
+    sidebar.classList.toggle('collapsed');
+  }
+}
+
+function closeMobileSidebar(){
+  const sidebar = document.getElementById('sidebar');
+  const overlay = document.getElementById('sidebarOverlay');
+  sidebar.classList.remove('mobile-open');
+  if(overlay) overlay.classList.remove('active');
 }
 
 // ── CHART INSTANCES ──
