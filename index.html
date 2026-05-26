@@ -388,21 +388,11 @@ tbody tr:hover td{background:var(--surface2)}
             <div class="card-title">🚦 신호등 리스크 센터</div>
             <div class="card-sub">실시간</div>
           </div>
-          <div class="risk-item risk-danger">
-            <div class="risk-dot dot-red"></div>
-            <div class="risk-text"><strong>메타 광고</strong> ROAS 119% — 기준치(130%) 미달, 소재 교체 필요</div>
-          </div>
-          <div class="risk-item risk-danger">
-            <div class="risk-dot dot-red"></div>
-            <div class="risk-text"><strong>넥밴드선풍기 S</strong> 재고 67개 (5일치) — 즉시 발주 필요</div>
-          </div>
-          <div class="risk-item risk-warn">
-            <div class="risk-dot dot-amber"></div>
-            <div class="risk-text"><strong>W컨셉</strong> 전주 대비 매출 –18% 급감</div>
-          </div>
-          <div class="risk-item risk-ok">
-            <div class="risk-dot dot-teal"></div>
-            <div class="risk-text"><strong>쿠팡 / 스마트스토어</strong> 목표 대비 정상 운영 중</div>
+          <div id="riskList">
+            <div class="risk-item risk-ok">
+              <div class="risk-dot dot-teal"></div>
+              <div class="risk-text">데이터를 업로드하면 리스크 항목이 자동으로 표시됩니다</div>
+            </div>
           </div>
         </div>
       </div>
@@ -468,17 +458,21 @@ tbody tr:hover td{background:var(--surface2)}
 
       <div class="grid-4" style="margin-bottom:16px">
         <div class="kpi-card"><div class="kpi-accent" style="background:var(--blue)"></div>
-          <div class="kpi-label">쿠팡</div><div class="kpi-value">₩38,200,000<span class="kpi-unit">원</span></div>
-          <div class="kpi-change up">▲ +18.4%</div></div>
+          <div class="kpi-label">쿠팡</div>
+          <div class="kpi-value" id="sales-kpi-coupang">--<span class="kpi-unit">원</span></div>
+          <div class="kpi-change neutral" id="sales-kpi-coupang-sub">데이터 없음</div></div>
         <div class="kpi-card"><div class="kpi-accent" style="background:var(--teal)"></div>
-          <div class="kpi-label">스마트스토어</div><div class="kpi-value">₩22,700,000<span class="kpi-unit">원</span></div>
-          <div class="kpi-change up">▲ +6.2%</div></div>
+          <div class="kpi-label">스마트스토어</div>
+          <div class="kpi-value" id="sales-kpi-ss">--<span class="kpi-unit">원</span></div>
+          <div class="kpi-change neutral" id="sales-kpi-ss-sub">데이터 없음</div></div>
         <div class="kpi-card"><div class="kpi-accent" style="background:var(--purple)"></div>
-          <div class="kpi-label">자사몰</div><div class="kpi-value">₩14,300,000<span class="kpi-unit">원</span></div>
-          <div class="kpi-change neutral">→ +0.8%</div></div>
+          <div class="kpi-label">자사몰</div>
+          <div class="kpi-value" id="sales-kpi-self">--<span class="kpi-unit">원</span></div>
+          <div class="kpi-change neutral" id="sales-kpi-self-sub">데이터 없음</div></div>
         <div class="kpi-card"><div class="kpi-accent" style="background:var(--amber)"></div>
-          <div class="kpi-label">외부 채널 합계</div><div class="kpi-value">₩9,500,000<span class="kpi-unit">원</span></div>
-          <div class="kpi-change down">▼ –4.1%</div></div>
+          <div class="kpi-label">외부 채널 합계</div>
+          <div class="kpi-value" id="sales-kpi-ext">--<span class="kpi-unit">원</span></div>
+          <div class="kpi-change neutral" id="sales-kpi-ext-sub">데이터 없음</div></div>
       </div>
 
       <div class="card" style="margin-bottom:14px">
@@ -1642,14 +1636,7 @@ function showLowStockModal(){
 }
 
 // ── TABLES ──
-const salesData=[
-  {name:'넥밴드 선풍기',opt:'화이트/S',sku:'NF-W-S',qty:412,cost:12000,rev:6180000,margin:2244000,stock:67},
-  {name:'넥밴드 선풍기',opt:'블랙/M',sku:'NF-B-M',qty:387,cost:12000,rev:5805000,margin:2108000,stock:145},
-  {name:'스마트 무드등',opt:'베이지',sku:'SM-BG',qty:256,cost:18500,rev:5888000,margin:1149000,stock:203},
-  {name:'미니 청소기',opt:'화이트',sku:'MC-W',qty:198,cost:22000,rev:5742000,margin:1392000,stock:88},
-  {name:'미니 청소기',opt:'블랙',sku:'MC-B',qty:174,cost:22000,rev:5046000,margin:1224000,stock:321},
-  {name:'아로마 디퓨저',opt:'우드',sku:'AD-WD',qty:143,cost:8500,rev:2288000,margin:1073000,stock:512},
-];
+const salesData=[]; // 실제 데이터는 엑셀 업로드 후 반영됩니다
 function buildSalesTable(){
   const data = uploadedSalesData.length ? uploadedSalesData : salesData;
   renderSalesTable(data, currentSalesChannel);
@@ -1673,13 +1660,7 @@ function buildStockTable(){
 function buildAdsTable(){
   const tb=document.getElementById('adsBody');
   if(!tb) return;
-  const ads=[
-    {media:'네이버 SA',imp:245000,click:4900,spend:2100000,rev:3738000,roas:178,cpc:429},
-    {media:'네이버 GFA',imp:890000,click:2670,spend:1400000,rev:1988000,roas:142,cpc:524},
-    {media:'구글 애즈',imp:412000,click:3296,spend:1800000,rev:2790000,roas:155,cpc:546},
-    {media:'메타 (인스타)',imp:1240000,click:4960,spend:1900000,rev:2261000,roas:119,cpc:383},
-    {media:'카카오 모먼트',imp:380000,click:1900,spend:1100000,rev:1441000,roas:131,cpc:579},
-  ];
+  const ads=[];
   tb.innerHTML=ads.map(r=>{
     const danger=r.roas<130;
     return `<tr>
@@ -2089,14 +2070,32 @@ function applyDataToDashboard() {
   const marginRate  = totalRev > 0 ? ((totalMargin/totalRev)*100).toFixed(1) : 0;
   const lowStock    = data.filter(r => r.stock > 0 && r.stock < 100).length;
 
-  // 광고 ROAS 평균
-  const adsData = uploadedAdsData.length ? uploadedAdsData : [
-    {media:'네이버 SA',imp:245000,click:4900,spend:2100000,rev:3738000,roas:178,cpc:429},
-    {media:'네이버 GFA',imp:890000,click:2670,spend:1400000,rev:1988000,roas:142,cpc:524},
-    {media:'구글 애즈',imp:412000,click:3296,spend:1800000,rev:2790000,roas:155,cpc:546},
-    {media:'메타 (인스타)',imp:1240000,click:4960,spend:1900000,rev:2261000,roas:119,cpc:383},
-    {media:'카카오 모먼트',imp:380000,click:1900,spend:1100000,rev:1441000,roas:131,cpc:579},
+  // ── 채널별 KPI 업데이트 ──
+  const chRev = {};
+  data.forEach(r => { const ch = r.channel||'기타'; chRev[ch] = (chRev[ch]||0) + r.rev; });
+
+  const mainChs = [
+    {key:'쿠팡',    elId:'sales-kpi-coupang', match:['쿠팡']},
+    {key:'스마트스토어', elId:'sales-kpi-ss',      match:['스마트스토어','smartstore','네이버스토어']},
+    {key:'자사몰',  elId:'sales-kpi-self',    match:['자사몰','meliens','mall','shop']},
   ];
+  mainChs.forEach(({elId, match}) => {
+    const rev = Object.entries(chRev).filter(([ch])=>match.some(m=>ch.toLowerCase().includes(m.toLowerCase()))).reduce((s,[,v])=>s+v,0);
+    const el = document.getElementById(elId);
+    const sub = document.getElementById(elId+'-sub');
+    if(el) el.innerHTML = rev>0 ? `₩${Math.round(rev).toLocaleString()}<span class="kpi-unit">원</span>` : `--<span class="kpi-unit">원</span>`;
+    if(sub) sub.textContent = rev>0 ? '업로드 데이터 반영' : '데이터 없음';
+  });
+  // 외부 채널 합계 (쿠팡/스마트스토어/자사몰 제외)
+  const mainKeys = ['쿠팡','스마트스토어','smartstore','네이버스토어','자사몰','meliens','mall','shop'];
+  const extRev = Object.entries(chRev).filter(([ch])=>!mainKeys.some(m=>ch.toLowerCase().includes(m.toLowerCase()))).reduce((s,[,v])=>s+v,0);
+  const extEl = document.getElementById('sales-kpi-ext');
+  const extSub = document.getElementById('sales-kpi-ext-sub');
+  if(extEl) extEl.innerHTML = extRev>0 ? `₩${Math.round(extRev).toLocaleString()}<span class="kpi-unit">원</span>` : `--<span class="kpi-unit">원</span>`;
+  if(extSub) extSub.textContent = extRev>0 ? Object.keys(chRev).filter(ch=>!mainKeys.some(m=>ch.toLowerCase().includes(m.toLowerCase()))).length+'개 채널' : '데이터 없음';
+
+  // 광고 ROAS 평균
+  const adsData = uploadedAdsData.length ? uploadedAdsData : [];
   const avgRoas = Math.round(adsData.reduce((s,a) => s + a.roas, 0) / adsData.length);
 
   // ── KPI 카드 업데이트 ──
@@ -2202,6 +2201,8 @@ function updateKPI(id, valueHTML, changeText, changeDir) {
 }
 
 function updateRiskCenter(data, adsData) {
+  // 리스크 센터 자동 업데이트
+  updateRiskCenter(data, adsData);
   const riskEl = document.querySelector('#page-home .risk-item.risk-danger:first-child .risk-text');
   const lowStockItems = data.filter(r => r.stock > 0 && r.stock < 100);
   const badRoas = adsData.filter(a => a.roas < 130);
@@ -2605,13 +2606,7 @@ function exportExcel() {
 
   } else if(currentPage === 'ads') {
     // ── 광고 성과 전용 엑셀 ──
-    const adsData=[
-      {media:'네이버 SA',imp:245000,click:4900,spend:2100,rev:3738,roas:178,cpc:429},
-      {media:'네이버 GFA',imp:890000,click:2670,spend:1400,rev:1988,roas:142,cpc:524},
-      {media:'구글 애즈',imp:412000,click:3296,spend:1800,rev:2790,roas:155,cpc:546},
-      {media:'메타 (인스타)',imp:1240000,click:4960,spend:1900,rev:2261,roas:119,cpc:383},
-      {media:'카카오 모먼트',imp:380000,click:1900,spend:1100,rev:1441,roas:131,cpc:579},
-    ];
+    const adsData=[];
     const adsSheet=[
       ['매체','노출수','클릭수','광고비(원)','전환매출(원)','ROAS(%)','CPC(원)','상태'],
       ...adsData.map(r=>[r.media,r.imp,r.click,r.spend,r.rev,r.roas,r.cpc,r.roas<130?'⚠ 기준미달':'정상'])
@@ -2852,13 +2847,7 @@ function exportPPT_Sales(dateStr) {
 
 // ── 광고 성과 PPT ──
 function exportPPT_Ads(dateStr) {
-  const adsData=[
-    {media:'네이버 SA',imp:245000,click:4900,spend:2100,rev:3738,roas:178,cpc:429},
-    {media:'네이버 GFA',imp:890000,click:2670,spend:1400,rev:1988,roas:142,cpc:524},
-    {media:'구글 애즈',imp:412000,click:3296,spend:1800,rev:2790,roas:155,cpc:546},
-    {media:'메타 (인스타)',imp:1240000,click:4960,spend:1900,rev:2261,roas:119,cpc:383},
-    {media:'카카오 모먼트',imp:380000,click:1900,spend:1100,rev:1441,roas:131,cpc:579},
-  ];
+  const adsData=[];
   const totalSpend=adsData.reduce((s,r)=>s+r.spend,0);
   const totalRev=adsData.reduce((s,r)=>s+r.rev,0);
   const avgRoas=Math.round(adsData.reduce((s,r)=>s+r.roas,0)/adsData.length);
@@ -3900,6 +3889,64 @@ function renderAssets() {
 
 function buildAssets(){ renderAssets(); }
 
+
+// ── 리스크 센터 자동 업데이트 ──
+function updateRiskCenter(salesData, adsData) {
+  const riskList = document.getElementById('riskList');
+  if(!riskList) return;
+
+  const items = [];
+
+  // 광고 ROAS 체크
+  if(adsData && adsData.length > 0) {
+    const lowRoas = adsData.filter(a => a.roas < 130);
+    lowRoas.forEach(a => {
+      items.push({cls:'risk-danger', dot:'dot-red',
+        text:`<strong>${a.media}</strong> ROAS ${a.roas}% — 기준치(130%) 미달, 소재 교체 필요`});
+    });
+    const goodRoas = adsData.filter(a => a.roas >= 130);
+    if(goodRoas.length > 0) {
+      items.push({cls:'risk-ok', dot:'dot-teal',
+        text:`<strong>${goodRoas.map(a=>a.media).join(', ')}</strong> ROAS 기준치 충족`});
+    }
+  }
+
+  // 재고 위험 체크
+  if(invRawData && invRawData.length > 0 && invRawData[0]._fileType === 'stock') {
+    const urgent = invRawData.filter(r => r.orderPoint === '발주필요' && r.daysLeft <= 7 && r.discontinued !== '단종');
+    urgent.slice(0,3).forEach(r => {
+      items.push({cls:'risk-danger', dot:'dot-red',
+        text:`<strong>${r.name}</strong> 재고 ${r.stock}개 (${r.daysLeft}일치) — 즉시 발주 필요`});
+    });
+    const warn = invRawData.filter(r => r.orderPoint === '발주필요' && r.daysLeft > 7 && r.daysLeft <= 14 && r.discontinued !== '단종');
+    if(warn.length > 0) {
+      items.push({cls:'risk-warn', dot:'dot-amber',
+        text:`발주 주의 <strong>${warn.length}개 SKU</strong> — 14일 이내 재고 소진 예상`});
+    }
+  }
+
+  // 매출 채널 이상 체크
+  if(salesData && salesData.length > 0) {
+    const chMap = {};
+    salesData.forEach(r => { const ch = r.channel||'기타'; chMap[ch] = (chMap[ch]||0) + r.rev; });
+    const topCh = Object.entries(chMap).sort((a,b)=>b[1]-a[1])[0];
+    if(topCh) {
+      items.push({cls:'risk-ok', dot:'dot-teal',
+        text:`<strong>${topCh[0]}</strong> 최다 매출 채널 — ₩${Math.round(topCh[1]).toLocaleString()}원`});
+    }
+  }
+
+  if(items.length === 0) {
+    riskList.innerHTML = `<div class="risk-item risk-ok"><div class="risk-dot dot-teal"></div><div class="risk-text">데이터를 업로드하면 리스크 항목이 자동으로 표시됩니다</div></div>`;
+    return;
+  }
+
+  riskList.innerHTML = items.map(({cls,dot,text}) => `
+    <div class="risk-item ${cls}">
+      <div class="risk-dot ${dot}"></div>
+      <div class="risk-text">${text}</div>
+    </div>`).join('');
+}
 // ── INIT ──
 window.addEventListener('DOMContentLoaded', ()=>{
   // 오늘 날짜 + 주차 범위
