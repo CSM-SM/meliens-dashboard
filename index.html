@@ -1988,54 +1988,65 @@ function parseCafe24Excel(json, filename) {
   const result = [];
 
   // ── 발주일 기준 이번 주 필터링 ──
-  const { filtered: jsonFiltered, hasDate, total, thisWeek } = filterByThisWeek(json, '발주일');
-  if(hasDate && thisWeek > 0) {
-    json = jsonFiltered;
-    showToast(`📅 자사몰 날짜 필터: ${total}행 → 이번 주 ${thisWeek}행`);
-  } else if(hasDate && thisWeek === 0) {
-    showToast(`⚠️ 이번 주 자사몰 데이터 없음 — 가장 최근 7일 데이터를 사용합니다`);
-    // 이번 주 없으면 최근 7일
-    const all = json.map(r => ({row:r, d:parseDate(r['발주일'])})).filter(x=>x.d).sort((a,b)=>b.d-a.d);
-    if(all.length > 0) {
-      const latest = all[0].d;
+  // 이번 주 월~일 계산
+  const now = new Date();
+  const dayOfWeek = now.getDay();
+  const mon = new Date(now); mon.setDate(now.getDate() - (dayOfWeek===0?6:dayOfWeek-1)); mon.setHours(0,0,0,0);
+  const sun = new Date(mon); sun.setDate(mon.getDate()+6); sun.setHours(23,59,59,999);
+
+  const total = json.length;
+  const weekJson = json.filter(row => {
+    const raw = (row['발주일']||'').toString().trim().substring(0,10);
+    if(!raw) return false;
+    const d = new Date(raw);
+    return d >= mon && d <= sun;
+  });
+
+  let filteredJson = weekJson;
+  if(weekJson.length > 0) {
+    showToast(`📅 자사몰 이번 주 필터: ${total}행 → ${weekJson.length}행`);
+  } else {
+    // 이번 주 데이터 없으면 최근 7일 사용
+    showToast(`⚠️ 이번 주 자사몰 데이터 없음 — 가장 최근 7일 사용`);
+    const allDated = json
+      .map(r => ({ row:r, d: new Date((r['발주일']||'').substring(0,10)) }))
+      .filter(x => !isNaN(x.d.getTime()))
+      .sort((a,b) => b.d - a.d);
+    if(allDated.length > 0) {
+      const latest = allDated[0].d;
       const cutoff = new Date(latest); cutoff.setDate(latest.getDate()-6);
-      json = all.filter(x=>x.d>=cutoff).map(x=>x.row);
+      filteredJson = allDated.filter(x=>x.d>=cutoff).map(x=>x.row);
+    } else {
+      filteredJson = json;
     }
   }
 
-  // 상품명별로 집계 (주문 단위 → SKU 단위)
+  // ── 상품+옵션별 집계 ──
   const skuMap = {};
-  json.forEach(row => {
-    const name = (row['주문상품명'] || row['주문상품명(옵션포함)'] || '').trim();
+  filteredJson.forEach(row => {
+    const name = (row['주문상품명'] || '').trim();
     if(!name) return;
 
-    // 옵션 파싱 (괄호 안 내용)
-    const optMatch = (row['주문상품명(옵션포함)'] || '').match(/\(([^)]+)\)$/);
+    // 옵션 파싱: 주문상품명(옵션포함) 에서 마지막 괄호 내용
+    const optionFull = (row['주문상품명(옵션포함)'] || '');
+    const optMatch = optionFull.match(/\(([^)]+)\)[^(]*$/);
     const opt = optMatch ? optMatch[1].split(',')[0].trim() : '';
 
-    const qty = parseInt(row['수량']) || 1;
-    const price = parseFloat((row['판매가'] || '0').toString().replace(/,/g,'')) || 0;
-    const totalPaid = parseFloat((row['총 결제금액'] || '0').toString().replace(/,/g,'')) || 0;
+    // 수량 × 판매가 = 행 매출 (올바른 계산)
+    const qty   = parseInt(row['수량']) || 0;
+    const price = parseFloat((row['판매가']||'0').toString().replace(/,/g,'')) || 0;
+    const rowRev = qty * price;
 
-    // 결제금액 0인 경우 (무료배송쿠폰 등) → 판매가 기준
-    const rowRev = totalPaid > 0 ? price * qty : price * qty;
-
-    const key = name + '|' + opt;
+    const key = name + '||' + opt;
     if(!skuMap[key]) {
-      skuMap[key] = { name, opt, qty:0, rev:0, orderCount:0, dates:[] };
+      skuMap[key] = { name, opt, qty:0, rev:0, dates:[] };
     }
-    skuMap[key].qty += qty;
-    skuMap[key].rev += rowRev;
-    skuMap[key].orderCount += 1;
+    skuMap[key].qty  += qty;
+    skuMap[key].rev  += rowRev;
+
     // 날짜 수집
-    const orderDateRaw = row['발주일'] || '';
-    if(orderDateRaw) {
-      const d = parseDate(orderDateRaw);
-      if(d) {
-        const ds = d.toLocaleDateString('ko-KR',{month:'2-digit',day:'2-digit'});
-        if(!skuMap[key].dates.includes(ds)) skuMap[key].dates.push(ds);
-      }
-    }
+    const ds = (row['발주일']||'').substring(5,10).replace('-','/');
+    if(ds && !skuMap[key].dates.includes(ds)) skuMap[key].dates.push(ds);
   });
 
   Object.entries(skuMap).forEach(([key, item]) => {
