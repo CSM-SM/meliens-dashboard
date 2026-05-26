@@ -1429,16 +1429,82 @@ function setSalesFilter(el, period){
   document.querySelectorAll('#page-sales .filter-tabs .ftab').forEach(t=>t.classList.remove('active'));
   el.classList.add('active');
   currentSalesPeriod = period;
-  const mult = periodMultipliers[period] || 1;
-  // 기간에 따라 데이터 스케일 조정
-  const scaled = salesData.map(r=>({
-    ...r,
-    qty:    Math.round(r.qty * mult),
-    rev:    Math.round(r.rev * mult),
-    margin: Math.round(r.margin * mult),
-  }));
-  renderSalesTable(scaled, currentSalesChannel);
-  showToast(`📅 ${period} 기준 데이터로 표시 중`);
+
+  // '주'는 현재 업로드 데이터 그대로 사용
+  if(period === '주') {
+    hidePeriodNotice();
+    filterSalesByChannel(currentSalesChannel);
+    drawHomeChartForPeriod(period);
+    return;
+  }
+
+  // 일/월/년 → 안내 메시지 표시
+  const periodLabels = {'일':'오늘 하루', '월':'이번 달', '분기':'이번 분기', '년':'올해 연간'};
+  const guideLabel = periodLabels[period] || period;
+  showPeriodNotice(period, guideLabel);
+  drawHomeChartForPeriod(period);
+}
+
+function showPeriodNotice(period, label) {
+  // 기존 공지 제거
+  hidePeriodNotice();
+  const tableWrap = document.querySelector('#page-sales .table-wrap');
+  if(!tableWrap) return;
+
+  const notice = document.createElement('div');
+  notice.id = 'periodNotice';
+  notice.style.cssText = 'margin:12px 0;padding:16px 20px;background:rgba(245,166,35,0.08);border:1px solid rgba(245,166,35,0.3);border-radius:10px;display:flex;align-items:center;gap:12px;';
+  notice.innerHTML = `
+    <svg style="width:20px;height:20px;stroke:var(--amber);fill:none;stroke-width:2;flex-shrink:0" viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+    </svg>
+    <div>
+      <div style="font-size:13px;font-weight:700;color:var(--t1);margin-bottom:3px">
+        ${label} 데이터를 업로드해주세요
+      </div>
+      <div style="font-size:11px;color:var(--t3);line-height:1.6">
+        현재 <strong style="color:var(--teal)">주간 데이터</strong>만 업로드되어 있습니다.
+        ${label} 기준 파일을 <strong>데이터 업로드</strong> 페이지에서 업로드하면 자동으로 반영됩니다.<br>
+        파일명 예시: <code style="background:var(--surface2);padding:1px 5px;border-radius:4px;font-family:Montserrat,sans-serif;font-size:10px">쿠팡_정산내역_${period==='월'?'2026년5월':period==='년'?'2026년':period==='일'?'20260526':'Q2_2026'}.xlsx</code>
+      </div>
+    </div>
+    <button onclick="hidePeriodNotice();setSalesFilter(document.querySelector('.ftab.active'),'주')"
+      style="margin-left:auto;flex-shrink:0;font-size:11px;padding:5px 12px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--t3);cursor:pointer">
+      주간으로 돌아가기
+    </button>`;
+
+  tableWrap.parentNode.insertBefore(notice, tableWrap);
+}
+
+function hidePeriodNotice() {
+  const el = document.getElementById('periodNotice');
+  if(el) el.remove();
+}
+
+function drawHomeChartForPeriod(period) {
+  // 주 이외 기간은 빈 차트 + 안내
+  if(period !== '주') {
+    const ctx = document.getElementById('homeChart');
+    if(!ctx) return;
+    if(homeChartInst) homeChartInst.destroy();
+    const periodLabels = {'일':'오늘 하루','월':'이번 달','분기':'이번 분기','년':'올해 연간'};
+    homeChartInst = new Chart(ctx, {
+      type:'bar',
+      data:{ labels:[periodLabels[period]||period], datasets:[{data:[0],backgroundColor:'rgba(0,122,255,0.1)',borderRadius:6}] },
+      options:{
+        responsive:true, maintainAspectRatio:false,
+        plugins:{legend:{display:false}, tooltip:{enabled:false}},
+        scales:{
+          x:{grid:{color:getColor()},ticks:{color:getTextColor(),font:{size:11}}},
+          y:{grid:{color:getColor()},ticks:{color:getTextColor(),font:{size:11},callback:v=>'₩'+fmtWon(v)},min:0,max:100}
+        }
+      }
+    });
+    const titleEl = document.getElementById('homeChartTitle');
+    if(titleEl) titleEl.textContent = `채널별 매출 현황 (${periodLabels[period]||period} — 데이터 없음)`;
+    return;
+  }
+  drawHomeChart();
 }
 
 // ── 이커머스 채널 탭 필터 ──
@@ -1451,16 +1517,13 @@ function setSalesChannel(el, channel){
 
 function filterSalesByChannel(channel){
   const data = uploadedSalesData.length ? uploadedSalesData : salesData;
-  const mult = periodMultipliers[currentSalesPeriod] || 1;
   let filtered = channel==='전체' ? data : data.filter(r=>{
     const ch = (r.channel||'').trim();
     if(channel==='스마트스토어') return ch==='스마트스토어'||ch==='스스'||ch.includes('smartstore');
     return ch===channel || ch.toLowerCase()===channel.toLowerCase();
   });
-  // 데이터가 없으면 데모 데이터 전체 표시 (채널 미분류)
   if(filtered.length===0 && uploadedSalesData.length===0) filtered = data;
-  const scaled = filtered.map(r=>({...r, qty:Math.round(r.qty*mult), rev:Math.round(r.rev*mult), margin:Math.round(r.margin*mult)}));
-  renderSalesTable(scaled, channel);
+  renderSalesTable(filtered, channel);
   // 채널명 헤더 표시
   const title = document.querySelector('#page-sales .card-title');
   const titleEl = document.getElementById('salesTableTitle');
