@@ -2630,24 +2630,100 @@ function renderDataStatus() {
 function handleFileUpload(event, type) {
   const file = event.target.files[0];
   if (!file) return;
+
+  // 로딩 표시
+  showToast('📂 파일 읽는 중... 대용량 파일은 시간이 걸릴 수 있습니다');
+
+  // CSV는 텍스트로 직접 처리 (대용량 최적화)
+  const isCSV = file.name.toLowerCase().endsWith('.csv');
+
   const reader = new FileReader();
+
   reader.onload = function(e) {
     try {
-      const data = new Uint8Array(e.target.result);
-      const wb   = XLSX.read(data, { type: 'array' });
-      const ws   = wb.Sheets[wb.SheetNames[0]];
-      const json = XLSX.utils.sheet_to_json(ws, { defval: '' });
-      const headers = json.length > 0 ? Object.keys(json[0]) : [];
+      let json, headers;
+
+      if(isCSV) {
+        // ── CSV: 직접 파싱 ──
+        let text = e.target.result;
+        if(text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
+        const rows = parseCSV(text);
+        if(rows.length < 2) { showToast('❌ 파일 내용이 없습니다'); return; }
+        headers = rows[0].map(h => h.trim());
+        json = [];
+        for(let i=1; i<rows.length; i++) {
+          if(!rows[i].some(c=>c.trim())) continue;
+          const obj = {};
+          headers.forEach((h,j) => { obj[h] = rows[i][j] || ''; });
+          json.push(obj);
+        }
+      } else {
+        // ── Excel: 대용량 최적화 파싱 ──
+        const data = new Uint8Array(e.target.result);
+        // 1단계: 헤더만 먼저 읽기
+        const wb = XLSX.read(data, { type:'array', sheetRows:2 });
+        const wsPreview = wb.Sheets[wb.SheetNames[0]];
+        const previewJson = XLSX.utils.sheet_to_json(wsPreview, { defval:'' });
+        headers = previewJson.length > 0 ? Object.keys(previewJson[0]) : [];
+
+        // 2단계: 카페24 파일이면 날짜 필터 범위로 전체 파싱
+        const isCafe24 = /^meliens_\d{8}_/i.test(file.name) ||
+                         (headers.includes('주문번호') && headers.includes('판매가'));
+
+        if(isCafe24) {
+          // 전체 파싱 (엑셀이라 어쩔 수 없음 - 브라우저 메모리 허용 범위)
+          showToast('📂 카페24 파일 분석 중... (대용량 파일은 30초 이상 걸릴 수 있습니다)');
+          const wbFull = XLSX.read(data, { type:'array', cellDates:false });
+          const wsFull = wbFull.Sheets[wbFull.SheetNames[0]];
+
+          // dense 모드로 파싱 (메모리 절약)
+          const rawJson = XLSX.utils.sheet_to_json(wsFull, { defval:'', raw:true });
+
+          // 이번 주 범위 계산
+          const now = new Date();
+          const dow = now.getDay();
+          const mon = new Date(now); mon.setDate(now.getDate()-(dow===0?6:dow-1)); mon.setHours(0,0,0,0);
+          const sun = new Date(mon); sun.setDate(mon.getDate()+6); sun.setHours(23,59,59,999);
+
+          // 날짜 컬럼 찾기 (발주일)
+          const dateCol = headers.find(h => h.includes('발주일') || h.includes('주문일'));
+
+          if(dateCol) {
+            // 이번 주 데이터만 필터링 (메모리 절약의 핵심)
+            json = rawJson.filter(row => {
+              const raw = (row[dateCol]||'').toString().substring(0,10);
+              if(!raw) return false;
+              const d = new Date(raw);
+              return !isNaN(d.getTime()) && d >= mon && d <= sun;
+            });
+            showToast(`📅 이번 주 필터: ${rawJson.length}행 → ${json.length}행`);
+          } else {
+            json = rawJson;
+          }
+          headers = json.length > 0 ? Object.keys(json[0]) : headers;
+        } else {
+          // 일반 파일은 그대로 파싱
+          const wbFull = XLSX.read(data, { type:'array' });
+          const wsFull = wbFull.Sheets[wbFull.SheetNames[0]];
+          json = XLSX.utils.sheet_to_json(wsFull, { defval:'' });
+          headers = json.length > 0 ? Object.keys(json[0]) : [];
+        }
+      }
+
+      if(json.length === 0) {
+        showToast('⚠️ 이번 주 해당 데이터가 없습니다. 파일의 날짜를 확인해주세요.');
+        return;
+      }
 
       addUploadHistory(file.name, file.size, type, json.length);
 
-      if (type === 'sales') {
+      if(type === 'sales') {
         const colMap = detectColumns(headers);
         const parsed = parseSalesExcel(json, headers, file.name);
         pendingUploadData.sales = parsed;
         pendingUploadData.salesFilename = file.name;
         showMappingPreview(file.name, colMap, json.slice(0,3), type, json, headers);
-      } else if (type === 'ads') {
+      } else if(type === 'ads') {
         const colMap = detectColumns(headers);
         const parsed = parseAdsExcel(json, headers, file.name);
         pendingUploadData.ads = parsed;
@@ -2655,11 +2731,20 @@ function handleFileUpload(event, type) {
         showMappingPreview(file.name, colMap, json.slice(0,3), type, json, headers);
       }
     } catch(err) {
-      console.error(err);
-      showToast('❌ 파일을 읽는 중 오류가 발생했습니다.');
+      console.error('파일 처리 오류:', err);
+      showToast('❌ 파일 처리 오류: ' + (err.message||'알 수 없는 오류') + ' — 파일이 너무 크면 기간을 좁혀서 다운받아주세요');
     }
   };
-  reader.readAsArrayBuffer(file);
+
+  reader.onerror = function() {
+    showToast('❌ 파일을 읽을 수 없습니다');
+  };
+
+  if(isCSV) {
+    reader.readAsText(file, 'UTF-8');
+  } else {
+    reader.readAsArrayBuffer(file);
+  }
 }
 
 function handleDrop(event, type) {
@@ -3607,13 +3692,13 @@ function exportInvExcel() {
 function handleInvManualUpload(event) {
   const file = event.target.files[0];
   if(!file) return;
+  showToast('📂 재고 파일 읽는 중...');
   const reader = new FileReader();
   reader.onload = function(e) {
     try {
-      if(file.name.endsWith('.csv')) {
+      if(file.name.toLowerCase().endsWith('.csv')) {
         processInventoryCSV(e.target.result);
       } else {
-        // 엑셀 파일
         const data = new Uint8Array(e.target.result);
         const wb = XLSX.read(data, {type:'array'});
         const ws = wb.Sheets[wb.SheetNames[0]];
@@ -3624,7 +3709,7 @@ function handleInvManualUpload(event) {
       showToast('❌ 파일 읽기 오류: ' + err.message);
     }
   };
-  if(file.name.endsWith('.csv')) {
+  if(file.name.toLowerCase().endsWith('.csv')) {
     reader.readAsText(file, 'UTF-8');
   } else {
     reader.readAsArrayBuffer(file);
