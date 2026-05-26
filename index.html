@@ -409,13 +409,21 @@ tbody tr:hover td{background:var(--surface2)}
       </div>
 
       <div class="grid-3">
-        <div class="ai-card">
-          <div class="ai-label"><div class="pulse"></div>AI WEEKLY BRIEF</div>
-          <div style="font-size:13px;font-weight:700;color:#fff;margin-bottom:10px">이번 주 4대 영역 요약</div>
-          <div class="ai-item"><div class="ai-tag tag-up">매출</div>쿠팡이 전체 매출을 견인. 메타 광고 효율 저하로 전체 ROAS 5% 하락.</div>
-          <div class="ai-item"><div class="ai-tag tag-dn">광고</div>네이버 SA는 ROAS 178% 양호. 메타 즉각 소재 교체 권장.</div>
-          <div class="ai-item"><div class="ai-tag tag-b2b">B2B</div>온라인팜 계약 검토 단계 순항. 초도물량 예상 ₩12,000,000원.</div>
-          <div class="ai-item"><div class="ai-tag tag-ok">CX</div>굿서비스 유지. 불량 문의 전주 대비 –32% 감소.</div>
+        <div class="ai-card" style="display:flex;flex-direction:column">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+            <div class="ai-label" style="margin-bottom:0"><div class="pulse"></div>AUTO BRIEF</div>
+            <button onclick="generateBriefing()" style="display:flex;align-items:center;gap:5px;background:rgba(255,255,255,0.12);border:none;color:#fff;padding:5px 10px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;font-family:Montserrat,sans-serif">
+              <svg style="width:11px;height:11px;stroke:#fff;fill:none;stroke-width:2.5" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+              새로고침
+            </button>
+          </div>
+          <div style="font-size:13px;font-weight:700;color:#fff;margin-bottom:10px" id="briefTitle">이번 주 자동 분석 브리핑</div>
+          <div id="aiBriefContent" style="flex:1;display:flex;flex-direction:column;gap:6px">
+            <div class="ai-item"><div class="ai-tag tag-up">매출</div><span id="brief-sales">데이터를 업로드하면 자동 분석됩니다.</span></div>
+            <div class="ai-item"><div class="ai-tag tag-dn">재고</div><span id="brief-stock">재고 CSV 업로드 후 자동 분석됩니다.</span></div>
+            <div class="ai-item"><div class="ai-tag tag-b2b">B2B</div><span id="brief-b2b">B2B 거래처를 등록하면 자동 분석됩니다.</span></div>
+            <div class="ai-item"><div class="ai-tag tag-ok">종합</div><span id="brief-overall">전체 데이터 기반 종합 의견이 표시됩니다.</span></div>
+          </div>
         </div>
 
         <!-- 히트맵 : 20개 전체 채널 -->
@@ -595,38 +603,113 @@ tbody tr:hover td{background:var(--surface2)}
     <!-- ═══ B2B PAGE ═══ -->
     <div class="page" id="page-b2b">
       <div class="section-title">B2B / 신규 매출</div>
-      <div class="section-sub">오프라인 영업 파이프라인 및 거래처별 계약 현황을 관리합니다.</div>
+      <div class="section-sub">거래처별 영업 파이프라인을 직접 입력하고 관리합니다. 데이터는 브라우저에 자동 저장됩니다.</div>
 
+      <!-- KPI 카드 (실시간 계산) -->
       <div class="grid-4" style="margin-bottom:16px">
         <div class="kpi-card"><div class="kpi-accent" style="background:var(--blue)"></div>
-          <div class="kpi-label">입점 매장 수</div><div class="kpi-value">540<span class="kpi-unit">개소</span></div>
-          <div class="kpi-change up">▲ 전월 대비 +12개소</div></div>
+          <div class="kpi-label">총 거래처 수</div>
+          <div class="kpi-value" id="b2b-total">0<span class="kpi-unit">건</span></div>
+          <div class="kpi-change neutral" id="b2b-total-sub">등록된 거래처</div>
+        </div>
         <div class="kpi-card"><div class="kpi-accent" style="background:var(--teal)"></div>
-          <div class="kpi-label">이번 주 B2B 매출</div><div class="kpi-value">₩6,200,000<span class="kpi-unit">원</span></div>
-          <div class="kpi-change up">▲ +22.5%</div></div>
+          <div class="kpi-label">계약 완료</div>
+          <div class="kpi-value" id="b2b-done">0<span class="kpi-unit">건</span></div>
+          <div class="kpi-change up" id="b2b-done-rev">예상 매출 -</div>
+        </div>
         <div class="kpi-card"><div class="kpi-accent" style="background:var(--amber)"></div>
-          <div class="kpi-label">계약 협의 중</div><div class="kpi-value">3<span class="kpi-unit">건</span></div>
-          <div class="kpi-change neutral">예상 ₩28,000,000원</div></div>
+          <div class="kpi-label">협의 진행 중</div>
+          <div class="kpi-value" id="b2b-progress">0<span class="kpi-unit">건</span></div>
+          <div class="kpi-change neutral" id="b2b-progress-rev">예상 매출 -</div>
+        </div>
         <div class="kpi-card"><div class="kpi-accent" style="background:var(--purple)"></div>
-          <div class="kpi-label">VMD 설치 완료</div><div class="kpi-value">312<span class="kpi-unit">개소</span></div>
-          <div class="kpi-change up">▲ 설치율 57.8%</div></div>
+          <div class="kpi-label">총 예상 매출</div>
+          <div class="kpi-value" id="b2b-total-rev">0<span class="kpi-unit">원</span></div>
+          <div class="kpi-change neutral">전체 파이프라인</div>
+        </div>
       </div>
 
+      <!-- 거래처 추가 버튼 -->
+      <div style="display:flex;justify-content:flex-end;margin-bottom:12px">
+        <button onclick="openB2BModal()" style="display:flex;align-items:center;gap:7px;padding:10px 18px;background:var(--navy);color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer">
+          <svg style="width:15px;height:15px;stroke:#fff;fill:none;stroke-width:2.5" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          거래처 추가
+        </button>
+      </div>
+
+      <!-- 파이프라인 카드 -->
       <div class="card" style="margin-bottom:14px">
-        <div class="card-header"><div class="card-title">영업 파이프라인</div><div class="card-sub">거래처별 진행 단계</div></div>
+        <div class="card-header"><div class="card-title">영업 파이프라인</div><div class="card-sub" id="b2b-pipeline-sub">거래처 추가 버튼으로 데이터를 입력하세요</div></div>
         <div id="pipelineWrap"></div>
       </div>
 
-      <div class="card b2b-table-wrap">
+      <!-- 거래처 테이블 -->
+      <div class="card">
         <div class="card-header"><div class="card-title">거래처별 납품 현황</div></div>
         <div class="table-wrap">
           <table>
             <thead><tr>
-              <th>거래처명</th><th>단계</th><th style="text-align:right">초도물량</th>
-              <th style="text-align:right">예상 매출(원)</th><th>예상 납품일</th><th>담당</th>
+              <th>거래처명</th><th>단계</th>
+              <th style="text-align:right">초도물량(개)</th>
+              <th style="text-align:right">예상 매출(원)</th>
+              <th>예상 납품일</th><th>담당자</th><th>메모</th>
+              <th style="text-align:center">관리</th>
             </tr></thead>
             <tbody id="b2bBody"></tbody>
           </table>
+        </div>
+      </div>
+
+      <!-- 거래처 입력 모달 -->
+      <div id="b2bModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;align-items:center;justify-content:center;padding:20px">
+        <div style="background:var(--surface);border-radius:16px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.3)">
+          <div style="padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+            <div style="font-size:16px;font-weight:800;color:var(--t1)" id="b2bModalTitle">거래처 추가</div>
+            <button onclick="closeB2BModal()" style="width:32px;height:32px;border-radius:50%;background:var(--surface2);border:1px solid var(--border);color:var(--t2);font-size:16px;cursor:pointer">×</button>
+          </div>
+          <div style="padding:20px 24px">
+            <input type="hidden" id="b2bEditId">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+              <div>
+                <label style="font-size:11px;font-weight:700;color:var(--t3);display:block;margin-bottom:5px">거래처명 *</label>
+                <input id="b2b-f-name" type="text" placeholder="예) 온라인팜" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--t1);font-size:13px">
+              </div>
+              <div>
+                <label style="font-size:11px;font-weight:700;color:var(--t3);display:block;margin-bottom:5px">진행 단계 *</label>
+                <select id="b2b-f-stage" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--t1);font-size:13px">
+                  <option value="0">제안 중</option>
+                  <option value="1">견적 조율</option>
+                  <option value="2">계약 검토</option>
+                  <option value="3">계약 완료</option>
+                  <option value="4">초도 출고</option>
+                </select>
+              </div>
+              <div>
+                <label style="font-size:11px;font-weight:700;color:var(--t3);display:block;margin-bottom:5px">초도 물량 (개)</label>
+                <input id="b2b-f-qty" type="number" placeholder="예) 3200" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--t1);font-size:13px">
+              </div>
+              <div>
+                <label style="font-size:11px;font-weight:700;color:var(--t3);display:block;margin-bottom:5px">예상 매출 (원)</label>
+                <input id="b2b-f-rev" type="number" placeholder="예) 12000000" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--t1);font-size:13px">
+              </div>
+              <div>
+                <label style="font-size:11px;font-weight:700;color:var(--t3);display:block;margin-bottom:5px">예상 납품일</label>
+                <input id="b2b-f-date" type="date" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--t1);font-size:13px">
+              </div>
+              <div>
+                <label style="font-size:11px;font-weight:700;color:var(--t3);display:block;margin-bottom:5px">담당자</label>
+                <input id="b2b-f-owner" type="text" placeholder="예) 김팀장" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--t1);font-size:13px">
+              </div>
+            </div>
+            <div style="margin-bottom:16px">
+              <label style="font-size:11px;font-weight:700;color:var(--t3);display:block;margin-bottom:5px">메모</label>
+              <textarea id="b2b-f-memo" placeholder="계약 조건, 특이사항 등" rows="2" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--t1);font-size:13px;resize:vertical"></textarea>
+            </div>
+            <div style="display:flex;gap:8px">
+              <button onclick="closeB2BModal()" style="flex:1;padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--t2);font-size:13px;font-weight:600;cursor:pointer">취소</button>
+              <button onclick="saveB2BDeal()" style="flex:2;padding:10px;border-radius:8px;background:var(--navy);color:#fff;font-size:13px;font-weight:700;cursor:pointer;border:none">저장하기</button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -1425,36 +1508,163 @@ function buildAdsTable(){
     </tr>`;
   }).join('');
 }
+// ════════════════════════════════════
+// B2B 데이터 관리
+// ════════════════════════════════════
+let b2bDeals = [];
+const B2B_STORAGE_KEY = 'meliens_b2b_deals';
+const B2B_STAGES = ['제안 중','견적 조율','계약 검토','계약 완료','초도 출고'];
+const B2B_STAGE_COLORS = ['#8A9BB0','#F5A623','#007AFF','#11CAA0','#6C5CE7'];
+
+function loadB2BData() {
+  try {
+    const saved = localStorage.getItem(B2B_STORAGE_KEY);
+    if(saved) b2bDeals = JSON.parse(saved);
+  } catch(e) { b2bDeals = []; }
+}
+function saveB2BData() {
+  try { localStorage.setItem(B2B_STORAGE_KEY, JSON.stringify(b2bDeals)); } catch(e) {}
+}
+
+function openB2BModal(editId) {
+  const modal = document.getElementById('b2bModal');
+  if(!modal) return;
+  modal.style.display = 'flex';
+  document.getElementById('b2bEditId').value = editId || '';
+  document.getElementById('b2bModalTitle').textContent = editId ? '거래처 수정' : '거래처 추가';
+  if(editId) {
+    const d = b2bDeals.find(x=>x.id===editId);
+    if(d) {
+      document.getElementById('b2b-f-name').value  = d.name || '';
+      document.getElementById('b2b-f-stage').value = d.stageN || 0;
+      document.getElementById('b2b-f-qty').value   = d.qty || '';
+      document.getElementById('b2b-f-rev').value   = d.rev || '';
+      document.getElementById('b2b-f-date').value  = d.date || '';
+      document.getElementById('b2b-f-owner').value = d.owner || '';
+      document.getElementById('b2b-f-memo').value  = d.memo || '';
+    }
+  } else {
+    ['b2b-f-name','b2b-f-qty','b2b-f-rev','b2b-f-date','b2b-f-owner','b2b-f-memo'].forEach(id=>{
+      const el = document.getElementById(id);
+      if(el) el.value = '';
+    });
+    document.getElementById('b2b-f-stage').value = 0;
+  }
+}
+function closeB2BModal() {
+  const modal = document.getElementById('b2bModal');
+  if(modal) modal.style.display = 'none';
+}
+function saveB2BDeal() {
+  const name = document.getElementById('b2b-f-name').value.trim();
+  if(!name) { showToast('❌ 거래처명을 입력해주세요'); return; }
+  const stageN = parseInt(document.getElementById('b2b-f-stage').value);
+  const deal = {
+    id:     document.getElementById('b2bEditId').value || Date.now().toString(),
+    name,
+    stageN,
+    stage:  B2B_STAGES[stageN],
+    qty:    parseInt(document.getElementById('b2b-f-qty').value) || 0,
+    rev:    parseInt(document.getElementById('b2b-f-rev').value) || 0,
+    date:   document.getElementById('b2b-f-date').value || '',
+    owner:  document.getElementById('b2b-f-owner').value.trim() || '',
+    memo:   document.getElementById('b2b-f-memo').value.trim() || '',
+  };
+  const editId = document.getElementById('b2bEditId').value;
+  if(editId) {
+    const idx = b2bDeals.findIndex(x=>x.id===editId);
+    if(idx>-1) b2bDeals[idx] = deal;
+  } else {
+    b2bDeals.push(deal);
+  }
+  saveB2BData();
+  closeB2BModal();
+  renderB2B();
+  showToast(editId ? '✅ 거래처 정보가 수정됐습니다' : '✅ 거래처가 추가됐습니다');
+}
+function deleteB2BDeal(id) {
+  if(!confirm('이 거래처를 삭제할까요?')) return;
+  b2bDeals = b2bDeals.filter(x=>x.id!==id);
+  saveB2BData();
+  renderB2B();
+  showToast('🗑 거래처가 삭제됐습니다');
+}
+
+function renderB2B() {
+  const tb = document.getElementById('b2bBody');
+  const pw = document.getElementById('pipelineWrap');
+
+  // KPI 계산
+  const total     = b2bDeals.length;
+  const done      = b2bDeals.filter(d=>d.stageN>=3);
+  const progress  = b2bDeals.filter(d=>d.stageN<3);
+  const totalRev  = b2bDeals.reduce((s,d)=>s+d.rev,0);
+  const doneRev   = done.reduce((s,d)=>s+d.rev,0);
+  const progRev   = progress.reduce((s,d)=>s+d.rev,0);
+
+  const upd=(id,html)=>{const el=document.getElementById(id);if(el)el.innerHTML=html;};
+  upd('b2b-total',       `${total}<span class="kpi-unit">건</span>`);
+  upd('b2b-done',        `${done.length}<span class="kpi-unit">건</span>`);
+  upd('b2b-progress',    `${progress.length}<span class="kpi-unit">건</span>`);
+  upd('b2b-total-rev',   `${Math.round(totalRev/10000).toLocaleString()}<span class="kpi-unit">만원</span>`);
+  upd('b2b-done-rev',    `₩${Math.round(doneRev).toLocaleString()}원`);
+  upd('b2b-progress-rev',`₩${Math.round(progRev).toLocaleString()}원`);
+
+  const subEl = document.getElementById('b2b-pipeline-sub');
+  if(subEl) subEl.textContent = total>0 ? `총 ${total}건 · 예상 매출 ₩${Math.round(totalRev).toLocaleString()}원` : '거래처 추가 버튼으로 데이터를 입력하세요';
+
+  // 파이프라인
+  if(pw) {
+    if(b2bDeals.length===0) {
+      pw.innerHTML = `<div style="padding:32px;text-align:center;color:var(--t3)">
+        <div style="font-size:14px;font-weight:600;margin-bottom:6px">등록된 거래처가 없습니다</div>
+        <div style="font-size:12px">우측 상단 "거래처 추가" 버튼을 클릭해서 데이터를 입력하세요</div>
+      </div>`;
+    } else {
+      pw.innerHTML = b2bDeals.map(d=>`
+        <div style="margin-bottom:16px;padding:14px;background:var(--surface2);border-radius:10px;border:1px solid var(--border)">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+            <span style="font-size:13px;font-weight:700;color:var(--t1)">${d.name}</span>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span style="font-size:11px;color:${B2B_STAGE_COLORS[d.stageN]};font-weight:700;font-family:Montserrat,sans-serif">${d.stage}</span>
+              ${d.rev>0?`<span style="font-size:11px;color:var(--t3)">₩${Math.round(d.rev).toLocaleString()}원</span>`:''}
+            </div>
+          </div>
+          <div style="display:flex;gap:2px;margin-bottom:4px">
+            ${B2B_STAGES.map((s,i)=>`<div style="flex:1;height:7px;border-radius:${i===0?'4px 0 0 4px':i===B2B_STAGES.length-1?'0 4px 4px 0':'0'};background:${i<=d.stageN?B2B_STAGE_COLORS[d.stageN]:'var(--border)'}"></div>`).join('')}
+          </div>
+          <div style="display:flex;gap:4px">
+            ${B2B_STAGES.map((s,i)=>`<div style="flex:1;text-align:center;font-size:9px;color:${i===d.stageN?B2B_STAGE_COLORS[d.stageN]:'var(--t3)'};font-family:Montserrat,sans-serif;font-weight:${i===d.stageN?700:400}">${s}</div>`).join('')}
+          </div>
+        </div>`).join('');
+    }
+  }
+
+  // 테이블
+  if(tb) {
+    if(b2bDeals.length===0) {
+      tb.innerHTML = `<tr><td colspan="8" style="padding:24px;text-align:center;color:var(--t3)">등록된 거래처가 없습니다</td></tr>`;
+    } else {
+      tb.innerHTML = b2bDeals.map(d=>`<tr>
+        <td class="td-name">${d.name}</td>
+        <td><span style="font-size:10px;padding:3px 8px;border-radius:5px;font-weight:700;font-family:Montserrat,sans-serif;background:${B2B_STAGE_COLORS[d.stageN]}20;color:${B2B_STAGE_COLORS[d.stageN]}">${d.stage}</span></td>
+        <td class="td-right">${d.qty?d.qty.toLocaleString()+' 개':'-'}</td>
+        <td class="td-right">${d.rev?'₩'+Math.round(d.rev).toLocaleString()+'원':'-'}</td>
+        <td style="font-size:12px">${d.date||'-'}</td>
+        <td>${d.owner||'-'}</td>
+        <td style="font-size:11px;color:var(--t3);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${d.memo||''}">${d.memo||'-'}</td>
+        <td style="text-align:center;white-space:nowrap">
+          <button onclick="openB2BModal('${d.id}')" style="font-size:11px;padding:4px 10px;border:1px solid var(--border);border-radius:5px;background:var(--surface);color:var(--blue);cursor:pointer;font-weight:600;margin-right:4px">수정</button>
+          <button onclick="deleteB2BDeal('${d.id}')" style="font-size:11px;padding:4px 10px;border:1px solid rgba(255,75,75,0.3);border-radius:5px;background:rgba(255,75,75,0.05);color:var(--red);cursor:pointer;font-weight:600">삭제</button>
+        </td>
+      </tr>`).join('');
+    }
+  }
+}
+
 function buildB2B(){
-  const tb=document.getElementById('b2bBody'), pw=document.getElementById('pipelineWrap');
-  const deals=[
-    {name:'온라인팜',stage:'계약 검토',stageN:2,qty:3200,rev:12000000,date:'2024.12.20',owner:'김팀장'},
-    {name:'헬스&뷰티 B2B',stage:'견적 조율',stageN:1,qty:1500,rev:5625000,date:'2025.01.10',owner:'이대리'},
-    {name:'기업 복지몰',stage:'제안 중',stageN:0,qty:800,rev:3000000,date:'2025.01.25',owner:'박사원'},
-    {name:'롯데ON MD',stage:'계약 완료',stageN:3,qty:5000,rev:18750000,date:'2024.12.15',owner:'김팀장'},
-  ];
-  const stages=['제안 중','견적 조율','계약 검토','계약 완료','초도 출고'];
-  const stageColors=['#8A9BB0','#F5A623','#007AFF','#11CAA0','#6C5CE7'];
-  if(pw) pw.innerHTML=deals.map(d=>`
-    <div style="margin-bottom:16px">
-      <div style="display:flex;justify-content:space-between;margin-bottom:6px">
-        <span style="font-size:13px;font-weight:700;color:var(--t1)">${d.name}</span>
-        <span style="font-size:11px;color:${stageColors[d.stageN]};font-weight:700;font-family:Montserrat">${d.stage}</span>
-      </div>
-      <div style="display:flex;gap:2px">
-        ${stages.map((s,i)=>`<div style="flex:1;height:6px;border-radius:${i===0?'4px 0 0 4px':i===stages.length-1?'0 4px 4px 0':'0'};background:${i<=d.stageN?stageColors[d.stageN]:'var(--border)'}"></div>`).join('')}
-      </div>
-      <div style="display:flex;gap:4px;margin-top:4px">
-        ${stages.map((s,i)=>`<div style="flex:1;text-align:center;font-size:9px;color:${i===d.stageN?stageColors[d.stageN]:'var(--t3)'};font-family:Montserrat;font-weight:${i===d.stageN?700:400}">${s}</div>`).join('')}
-      </div>
-    </div>`).join('');
-  if(tb) tb.innerHTML=deals.map(d=>`<tr>
-    <td class="td-name">${d.name}</td>
-    <td><span style="font-size:10px;padding:3px 8px;border-radius:5px;font-weight:700;font-family:Montserrat;background:rgba(0,122,255,0.1);color:var(--blue)">${d.stage}</span></td>
-    <td class="td-right">${d.qty.toLocaleString()}개</td>
-    <td class="td-right">₩${Math.round(d.rev).toLocaleString()}원</td>
-    <td>${d.date}</td><td>${d.owner}</td>
-  </tr>`).join('');
+  loadB2BData();
+  renderB2B();
 }
 function buildAssets(){
   const grid=document.getElementById('assetGrid');
@@ -1760,6 +1970,8 @@ function applyDataToDashboard() {
   updateRiskCenter(data, adsData);
 
   showToast(`✅ 데이터 반영 완료 — ${data.length}개 SKU, 총매출 ₩${Math.round(totalRev).toLocaleString()}원`);
+  // 브리핑 자동 업데이트
+  setTimeout(()=>generateBriefing(), 300);
 }
 
 function updateKPI(id, valueHTML, changeText, changeDir) {
@@ -2884,6 +3096,163 @@ const spinStyle = document.createElement('style');
 spinStyle.textContent = '@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}';
 document.head.appendChild(spinStyle);
 
+
+// ════════════════════════════════════════════════
+// 규칙 기반 자동 브리핑 생성 엔진
+// ════════════════════════════════════════════════
+function generateBriefing() {
+  const salesData_ = uploadedSalesData.length ? uploadedSalesData : [];
+  const stockData_ = (invRawData.length && invRawData[0]?._fileType === 'stock') ? invRawData : [];
+  const b2bData_   = b2bDeals || [];
+
+  // ── 매출 브리핑 ──
+  let salesBrief = '', salesTag = 'tag-up';
+  if(salesData_.length > 0) {
+    const totalRev = salesData_.reduce((s,r)=>s+r.rev,0);
+    // 채널별 집계
+    const chMap = {};
+    salesData_.forEach(r=>{ const ch=r.channel||'기타'; chMap[ch]=(chMap[ch]||0)+r.rev; });
+    const topChs = Object.entries(chMap).sort((a,b)=>b[1]-a[1]);
+    const top1 = topChs[0];
+    const top2 = topChs[1];
+    const top1Pct = totalRev>0 ? Math.round(top1[1]/totalRev*100) : 0;
+
+    // 마진율
+    const totalMargin = salesData_.reduce((s,r)=>s+r.margin,0);
+    const marginRate  = totalRev>0 ? ((totalMargin/totalRev)*100).toFixed(1) : 0;
+
+    // 저마진 SKU
+    const lowMargin = salesData_.filter(r=>r.rev>0 && (r.margin/r.rev)<0.1);
+
+    let parts = [];
+    parts.push(`총 매출 ₩${Math.round(totalRev).toLocaleString()}원`);
+    if(top1) parts.push(`${top1[0]}이 ${top1Pct}%로 1위 채널`);
+    if(top2) parts.push(`2위 ${top2[0]}`);
+    if(marginRate < 20) { parts.push(`마진율 ${marginRate}% — 수익성 점검 필요`); salesTag='tag-dn'; }
+    else parts.push(`마진율 ${marginRate}% 유지 중`);
+    if(lowMargin.length>0) parts.push(`저마진 SKU ${lowMargin.length}개 확인 필요`);
+    salesBrief = parts.join('. ') + '.';
+  } else {
+    salesBrief = '매출 데이터 없음 — 이커머스 매출 페이지에서 엑셀을 업로드해주세요.';
+    salesTag = 'tag-ok';
+  }
+
+  // ── 재고 브리핑 ──
+  let stockBrief = '', stockTag = 'tag-ok';
+  if(stockData_.length > 0) {
+    const urgent   = stockData_.filter(r=>r.orderPoint==='발주필요' && r.daysLeft<=7 && r.discontinued!=='단종');
+    const warning  = stockData_.filter(r=>r.orderPoint==='발주필요' && r.daysLeft>7 && r.daysLeft<=14 && r.discontinued!=='단종');
+    const orderAll = stockData_.filter(r=>r.orderPoint==='발주필요' && r.discontinued!=='단종');
+    const normal   = stockData_.filter(r=>r.orderPoint!=='발주필요' && r.discontinued!=='단종');
+    const disc     = stockData_.filter(r=>r.discontinued==='단종');
+    const zeroStock= stockData_.filter(r=>r.stock===0 && r.discontinued!=='단종');
+
+    let parts = [];
+    if(urgent.length>0) {
+      const names = urgent.slice(0,2).map(r=>r.name).join(', ');
+      parts.push(`🚨 ${urgent.length}개 SKU 7일 이내 소진 (${names})`);
+      stockTag = 'tag-dn';
+    } else if(orderAll.length>0) {
+      parts.push(`발주필요 ${orderAll.length}개 SKU`);
+      stockTag = 'tag-dn';
+    }
+    if(warning.length>0) parts.push(`주의 ${warning.length}개 (14일 이내 소진)`);
+    if(zeroStock.length>0) parts.push(`재고 0개 ${zeroStock.length}개 SKU`);
+    if(normal.length>0) parts.push(`정상 ${normal.length}개 SKU`);
+    if(disc.length>0) parts.push(`단종 ${disc.length}개`);
+    if(urgent.length===0 && orderAll.length===0) { parts.push('전체 재고 정상'); stockTag='tag-ok'; }
+    stockBrief = parts.join('. ') + '.';
+  } else {
+    stockBrief = '재고 데이터 없음 — 재고관리 페이지에서 CSV를 업로드해주세요.';
+  }
+
+  // ── B2B 브리핑 ──
+  let b2bBrief = '', b2bTag = 'tag-b2b';
+  if(b2bData_.length > 0) {
+    const done     = b2bData_.filter(d=>d.stageN>=3);
+    const progress = b2bData_.filter(d=>d.stageN<3);
+    const totalRev = b2bData_.reduce((s,d)=>s+d.rev,0);
+    const doneRev  = done.reduce((s,d)=>s+d.rev,0);
+
+    let parts = [];
+    parts.push(`총 ${b2bData_.length}건 등록`);
+    if(done.length>0) parts.push(`계약완료 ${done.length}건 (₩${Math.round(doneRev).toLocaleString()}원)`);
+    if(progress.length>0) {
+      const progNames = progress.slice(0,2).map(d=>d.name).join(', ');
+      parts.push(`협의 진행 중 ${progress.length}건 (${progNames})`);
+    }
+    if(totalRev>0) parts.push(`전체 파이프라인 예상 매출 ₩${Math.round(totalRev).toLocaleString()}원`);
+    b2bBrief = parts.join('. ') + '.';
+  } else {
+    b2bBrief = 'B2B 데이터 없음 — B2B/신규 매출 페이지에서 거래처를 등록해주세요.';
+  }
+
+  // ── 종합 의견 ──
+  let overallBrief = '', overallTag = 'tag-ok';
+  const issues = [];
+  const goods  = [];
+
+  if(salesData_.length>0) {
+    const totalRev    = salesData_.reduce((s,r)=>s+r.rev,0);
+    const totalMargin = salesData_.reduce((s,r)=>s+r.margin,0);
+    const marginRate  = totalRev>0?(totalMargin/totalRev*100):0;
+    if(marginRate < 15) issues.push('수익성 저하');
+    else goods.push('매출 양호');
+  }
+  if(stockData_.length>0) {
+    const urgent = stockData_.filter(r=>r.orderPoint==='발주필요'&&r.daysLeft<=7&&r.discontinued!=='단종');
+    if(urgent.length>0) { issues.push(`긴급 발주 ${urgent.length}건`); overallTag='tag-dn'; }
+    else goods.push('재고 안정');
+  }
+  if(b2bData_.length>0) {
+    const done = b2bData_.filter(d=>d.stageN>=3);
+    if(done.length>0) goods.push(`B2B ${done.length}건 계약 완료`);
+    else issues.push('B2B 계약 대기 중');
+  }
+
+  if(issues.length===0 && goods.length===0) {
+    overallBrief = '데이터를 업로드하면 종합 분석 결과가 표시됩니다.';
+  } else if(issues.length===0) {
+    overallBrief = `✅ 전반적으로 양호합니다. ${goods.join(', ')}.`;
+    overallTag = 'tag-ok';
+  } else {
+    overallBrief = `⚠️ 주의 필요: ${issues.join(', ')}. ${goods.length>0?'긍정적: '+goods.join(', ')+'.':''}`;
+    overallTag = 'tag-dn';
+  }
+
+  // ── 화면 업데이트 ──
+  const update = (id, text, tagId, tagClass) => {
+    const el = document.getElementById(id);
+    if(el) el.textContent = text;
+    if(tagId && tagClass) {
+      const tag = el?.parentElement?.querySelector('.ai-tag');
+      if(tag) { tag.className = 'ai-tag ' + tagClass; }
+    }
+  };
+
+  update('brief-sales',   salesBrief,   null, salesTag);
+  update('brief-stock',   stockBrief,   null, stockTag);
+  update('brief-b2b',     b2bBrief,     null, b2bTag);
+  update('brief-overall', overallBrief, null, overallTag);
+
+  // 태그 색상 업데이트
+  const items = document.querySelectorAll('#aiBriefContent .ai-item');
+  const tags  = [salesTag, stockTag, b2bTag, overallTag];
+  items.forEach((item, i) => {
+    const tag = item.querySelector('.ai-tag');
+    if(tag && tags[i]) tag.className = 'ai-tag ' + tags[i];
+  });
+
+  // 타이틀 업데이트
+  const titleEl = document.getElementById('briefTitle');
+  if(titleEl) {
+    const now = new Date();
+    titleEl.textContent = now.toLocaleDateString('ko-KR',{month:'long',day:'numeric'}) + ' 자동 분석 브리핑';
+  }
+
+  showToast('✅ 브리핑이 업데이트됐습니다');
+}
+
 // ── INIT ──
 window.addEventListener('DOMContentLoaded', ()=>{
   // 오늘 날짜 + 주차 범위
@@ -2910,6 +3279,9 @@ window.addEventListener('DOMContentLoaded', ()=>{
   const savedInv = loadFromStorage(STORAGE_KEYS.inv);
   const savedInvWeeks = loadFromStorage(STORAGE_KEYS.invWeeks);
   const savedInvHeaders = loadFromStorage(STORAGE_KEYS.invHeaders);
+  // 초기 브리핑 생성
+  setTimeout(()=>generateBriefing(), 500);
+
   if(savedInv && savedInv.length > 0) {
     invRawData = savedInv;
     invWeeks = savedInvWeeks || [];
