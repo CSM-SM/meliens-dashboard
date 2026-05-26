@@ -2134,32 +2134,114 @@ function showToast(msg) {
 // ── 매핑 결과 미리보기 모달 ──
 function showMappingPreview(filename, colMap, sampleRows, type, allRows, headers) {
   const existing = document.getElementById('mappingModal');
-  if (existing) existing.remove();
+  if(existing) existing.remove();
 
   const fields = Object.entries(colMap);
-  const previewHtml = fields.length > 0
-    ? fields.map(([f,c]) => `<div style="display:flex;gap:8px;padding:5px 0;border-bottom:1px solid var(--border2);font-size:12px"><span style="color:var(--t3);width:80px;flex-shrink:0">${f}</span><span style="color:var(--blue);font-weight:600">${c}</span></div>`).join('')
-    : '<p style="color:var(--red);font-size:12px">인식된 컬럼이 없습니다. 컬럼명을 확인해주세요.</p>';
+  const parsed = type === 'sales' ? (pendingUploadData.sales || []) : (pendingUploadData.ads || []);
+
+  // ── 데이터 요약 계산 ──
+  let summaryHtml = '';
+  if(type === 'sales' && parsed.length > 0) {
+    const totalRev    = parsed.reduce((s,r)=>s+r.rev,0);
+    const totalMargin = parsed.reduce((s,r)=>s+r.margin,0);
+    const totalQty    = parsed.reduce((s,r)=>s+r.qty,0);
+    const marginRate  = totalRev>0?((totalMargin/totalRev)*100).toFixed(1):0;
+    const chMap = {};
+    parsed.forEach(r=>{ const ch=r.channel||'미분류'; chMap[ch]=(chMap[ch]||0)+1; });
+    const chList = Object.entries(chMap).map(([ch,cnt])=>`${ch}(${cnt}개)`).join(', ');
+    summaryHtml = `
+      <div style="background:rgba(0,122,255,0.06);border:1px solid rgba(0,122,255,0.15);border-radius:10px;padding:14px;margin-bottom:14px">
+        <div style="font-size:11px;font-weight:700;color:var(--blue);font-family:Montserrat,sans-serif;letter-spacing:1px;margin-bottom:10px">📊 데이터 요약 — 반영 전 확인하세요</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px">
+          <div style="padding:8px 10px;background:var(--surface);border-radius:7px">
+            <div style="color:var(--t3);margin-bottom:3px">인식된 SKU</div>
+            <div style="font-weight:700;color:var(--t1);font-family:Montserrat,sans-serif">${parsed.length.toLocaleString()}개</div>
+          </div>
+          <div style="padding:8px 10px;background:var(--surface);border-radius:7px">
+            <div style="color:var(--t3);margin-bottom:3px">총 판매수량</div>
+            <div style="font-weight:700;color:var(--t1);font-family:Montserrat,sans-serif">${totalQty.toLocaleString()}개</div>
+          </div>
+          <div style="padding:8px 10px;background:var(--surface);border-radius:7px">
+            <div style="color:var(--t3);margin-bottom:3px">총 매출</div>
+            <div style="font-weight:700;color:var(--blue);font-family:Montserrat,sans-serif">₩${Math.round(totalRev).toLocaleString()}원</div>
+          </div>
+          <div style="padding:8px 10px;background:var(--surface);border-radius:7px">
+            <div style="color:var(--t3);margin-bottom:3px">마진율</div>
+            <div style="font-weight:700;color:${marginRate>=20?'var(--teal)':'var(--red)'};font-family:Montserrat,sans-serif">${marginRate}%</div>
+          </div>
+        </div>
+        ${chList ? `<div style="margin-top:10px;font-size:11px;color:var(--t3)">감지된 채널: ${chList}</div>` : ''}
+      </div>`;
+  } else if(type === 'ads' && parsed.length > 0) {
+    const totalSpend = parsed.reduce((s,r)=>s+r.spend,0);
+    const totalRev   = parsed.reduce((s,r)=>s+r.rev,0);
+    const avgRoas    = parsed.length>0?Math.round(parsed.reduce((s,r)=>s+r.roas,0)/parsed.length):0;
+    summaryHtml = `
+      <div style="background:rgba(0,122,255,0.06);border:1px solid rgba(0,122,255,0.15);border-radius:10px;padding:14px;margin-bottom:14px">
+        <div style="font-size:11px;font-weight:700;color:var(--blue);font-family:Montserrat,sans-serif;letter-spacing:1px;margin-bottom:10px">📊 광고 데이터 요약</div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;font-size:12px">
+          <div style="padding:8px 10px;background:var(--surface);border-radius:7px">
+            <div style="color:var(--t3);margin-bottom:3px">총 광고비</div>
+            <div style="font-weight:700;color:var(--t1);font-family:Montserrat,sans-serif">₩${Math.round(totalSpend).toLocaleString()}원</div>
+          </div>
+          <div style="padding:8px 10px;background:var(--surface);border-radius:7px">
+            <div style="color:var(--t3);margin-bottom:3px">전환 매출</div>
+            <div style="font-weight:700;color:var(--blue);font-family:Montserrat,sans-serif">₩${Math.round(totalRev).toLocaleString()}원</div>
+          </div>
+          <div style="padding:8px 10px;background:var(--surface);border-radius:7px">
+            <div style="color:var(--t3);margin-bottom:3px">평균 ROAS</div>
+            <div style="font-weight:700;color:${avgRoas>=130?'var(--teal)':'var(--red)'};font-family:Montserrat,sans-serif">${avgRoas}%</div>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  // ── 원본 데이터 샘플 (3행) ──
+  const sampleHead = headers.slice(0,8);
+  const sampleBody = allRows.slice(0,3);
+  const sampleHtml = `
+    <div style="margin-bottom:14px">
+      <div style="font-size:11px;font-weight:700;color:var(--t3);font-family:Montserrat,sans-serif;letter-spacing:1px;margin-bottom:8px">📄 원본 파일 샘플 (상위 3행)</div>
+      <div style="overflow-x:auto;border-radius:8px;border:1px solid var(--border)">
+        <table style="width:100%;border-collapse:collapse;font-size:11px">
+          <thead><tr>${sampleHead.map(h=>`<th style="padding:6px 8px;background:var(--surface2);text-align:left;color:var(--t3);font-weight:700;white-space:nowrap;border-bottom:1px solid var(--border)">${h}</th>`).join('')}</tr></thead>
+          <tbody>${sampleBody.map(row=>`<tr>${sampleHead.map((h,i)=>`<td style="padding:5px 8px;border-bottom:1px solid var(--border2);color:var(--t2);white-space:nowrap;max-width:100px;overflow:hidden;text-overflow:ellipsis">${(row[h]||'').toString().slice(0,20)}</td>`).join('')}</tr>`).join('')}</tbody>
+        </table>
+      </div>
+    </div>`;
+
+  // ── 컬럼 매핑 ──
+  const mappingHtml = fields.length > 0
+    ? `<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">${fields.map(([f,c])=>`<div style="display:flex;gap:6px;padding:5px 8px;background:var(--surface2);border-radius:6px;font-size:11px"><span style="color:var(--t3);flex-shrink:0">${f}</span><span style="color:var(--blue);font-weight:600;overflow:hidden;text-overflow:ellipsis">→ ${c}</span></div>`).join('')}</div>`
+    : '<p style="color:var(--red);font-size:12px">⚠️ 인식된 컬럼이 없습니다. 컬럼명을 확인해주세요.</p>';
 
   const modal = document.createElement('div');
   modal.id = 'mappingModal';
-  modal.style.cssText = `position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px`;
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px';
   modal.innerHTML = `
-    <div style="background:var(--surface);border-radius:16px;padding:24px;width:100%;max-width:480px;max-height:80vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.3)">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+    <div style="background:var(--surface);border-radius:16px;width:100%;max-width:600px;max-height:88vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.3)">
+      <div style="padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--surface);z-index:1">
         <div>
-          <div style="font-size:15px;font-weight:700;color:var(--t1)">🤖 스마트 매핑 결과</div>
-          <div style="font-size:11px;color:var(--t3);margin-top:2px">${filename} · ${allRows.length}행 인식</div>
+          <div style="font-size:15px;font-weight:800;color:var(--t1)">📋 업로드 데이터 검증</div>
+          <div style="font-size:11px;color:var(--t3);margin-top:2px">${filename} · 원본 ${allRows.length}행 → 파싱 ${parsed.length}개</div>
         </div>
-        <button onclick="document.getElementById('mappingModal').remove()" style="width:28px;height:28px;border-radius:50%;background:var(--surface2);border:1px solid var(--border);color:var(--t2);font-size:14px;cursor:pointer">×</button>
+        <button onclick="document.getElementById('mappingModal').remove()" style="width:30px;height:30px;border-radius:50%;background:var(--surface2);border:1px solid var(--border);color:var(--t2);font-size:15px;cursor:pointer">×</button>
       </div>
-      <div style="background:var(--surface2);border-radius:10px;padding:14px;margin-bottom:16px">
-        <div style="font-size:11px;font-weight:700;color:var(--t3);font-family:Montserrat;letter-spacing:1px;margin-bottom:8px">인식된 컬럼 매핑</div>
-        ${previewHtml}
-      </div>
-      <div style="display:flex;gap:8px">
-        <button onclick="document.getElementById('mappingModal').remove()" style="flex:1;padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--t2);font-size:13px;font-weight:600;cursor:pointer">취소</button>
-        <button onclick="confirmUpload('${type}');document.getElementById('mappingModal').remove()" style="flex:2;padding:10px;border-radius:8px;background:var(--navy);color:#fff;font-size:13px;font-weight:700;cursor:pointer">✅ 이 매핑으로 데이터 반영</button>
+      <div style="padding:20px 24px">
+        ${summaryHtml}
+        ${sampleHtml}
+        <div style="margin-bottom:16px">
+          <div style="font-size:11px;font-weight:700;color:var(--t3);font-family:Montserrat,sans-serif;letter-spacing:1px;margin-bottom:8px">🔗 컬럼 자동 매핑 결과</div>
+          ${mappingHtml}
+        </div>
+        <div style="background:rgba(245,166,35,0.08);border:1px solid rgba(245,166,35,0.2);border-radius:8px;padding:10px 12px;font-size:11px;color:var(--t2);margin-bottom:16px;line-height:1.6">
+          💡 위 요약 수치가 원본 파일과 다르다면 <strong>취소</strong>하고 파일을 확인해주세요.<br>
+          맞다면 <strong>반영하기</strong>를 클릭해 대시보드에 적용합니다.
+        </div>
+        <div style="display:flex;gap:8px">
+          <button onclick="document.getElementById('mappingModal').remove()" style="flex:1;padding:11px;border-radius:9px;border:1px solid var(--border);background:var(--surface2);color:var(--t2);font-size:13px;font-weight:600;cursor:pointer">❌ 취소</button>
+          <button onclick="confirmUpload('${type}');document.getElementById('mappingModal').remove()" style="flex:2;padding:11px;border-radius:9px;background:var(--navy);color:#fff;font-size:13px;font-weight:700;cursor:pointer;border:none">✅ 검증 완료 — 대시보드에 반영</button>
+        </div>
       </div>
     </div>`;
   document.body.appendChild(modal);
