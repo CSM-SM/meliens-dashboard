@@ -1102,17 +1102,8 @@ tbody tr:hover td{background:var(--surface2)}
       <div class="card">
         <div class="card-header"><div class="card-title">업로드 히스토리</div></div>
         <div id="uploadHistory">
-          <div class="upload-file-item">
-            <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-            <div class="file-name">쿠팡_정산내역_2024_W49.xlsx</div>
-            <div class="file-meta">2.3 MB · 2024.12.07</div>
-            <div class="file-status">처리 완료</div>
-          </div>
-          <div class="upload-file-item">
-            <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-            <div class="file-name">메타_광고보고서_2024_W49.xlsx</div>
-            <div class="file-meta">1.1 MB · 2024.12.07</div>
-            <div class="file-status">처리 완료</div>
+          <div id="uploadHistoryEmpty" style="padding:24px;text-align:center;color:var(--t3);font-size:13px">
+            아직 업로드한 파일이 없습니다
           </div>
         </div>
       </div>
@@ -2585,17 +2576,16 @@ function handleDrop(event, type) {
 }
 
 function addUploadHistory(name, size, type, rows) {
-  const hist = document.getElementById('uploadHistory');
-  if (!hist) return;
   const sizeStr = (size/1024/1024).toFixed(1) + ' MB';
-  const now = new Date().toLocaleDateString('ko-KR', {year:'numeric',month:'2-digit',day:'2-digit'});
-  const item = document.createElement('div');
-  item.className = 'upload-file-item';
-  item.innerHTML = `<svg style="width:16px;height:16px;stroke:#11CAA0;fill:none;stroke-width:2;flex-shrink:0" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-    <div class="file-name">${name}</div>
-    <div class="file-meta">${sizeStr} · ${now} · ${rows}행</div>
-    <div class="file-status">처리 완료</div>`;
-  hist.prepend(item);
+  const now = new Date().toLocaleDateString('ko-KR', {year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});
+  const meta = `${sizeStr} · ${now} · ${rows}행`;
+
+  // localStorage에 저장
+  const existing = loadFromStorage(STORAGE_KEYS.uploadHistory) || [];
+  const filtered = existing.filter(h => h.name !== name);
+  const newHistory = [{ name, meta }, ...filtered].slice(0, 20);
+  saveToStorage(STORAGE_KEYS.uploadHistory, newHistory);
+  renderUploadHistory(newHistory);
 }
 
 // ══════════════════════════════════════
@@ -4053,6 +4043,27 @@ function updateSalesDateBadge(data) {
   badge.style.display = 'none';
 }
 
+
+// ── 업로드 히스토리 렌더링 ──
+function renderUploadHistory(history) {
+  const hist = document.getElementById('uploadHistory');
+  if(!hist) return;
+  if(!history || history.length === 0) {
+    hist.innerHTML = '<div id="uploadHistoryEmpty" style="padding:24px;text-align:center;color:var(--t3);font-size:13px">아직 업로드한 파일이 없습니다</div>';
+    return;
+  }
+  hist.innerHTML = history.map(item => `
+    <div class="upload-file-item">
+      <svg style="width:16px;height:16px;stroke:#11CAA0;fill:none;stroke-width:2;flex-shrink:0" viewBox="0 0 24 24">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+        <polyline points="14 2 14 8 20 8"/>
+      </svg>
+      <div class="file-name">${item.name}</div>
+      <div class="file-meta">${item.meta}</div>
+      <div class="file-status" style="color:var(--teal);font-size:11px;font-weight:700">처리 완료</div>
+    </div>`).join('');
+}
+
 // ── INIT ──
 window.addEventListener('DOMContentLoaded', ()=>{
   // 오늘 날짜 + 주차 범위
@@ -4106,19 +4117,7 @@ window.addEventListener('DOMContentLoaded', ()=>{
   }
   // 업로드 히스토리 복구
   const savedHistory = loadFromStorage(STORAGE_KEYS.uploadHistory);
-  if(savedHistory && savedHistory.length > 0) {
-    const hist = document.getElementById('uploadHistory');
-    if(hist) {
-      const restored = savedHistory.map(item => `
-        <div class="upload-file-item">
-          <svg style="width:16px;height:16px;stroke:#11CAA0;fill:none;stroke-width:2;flex-shrink:0" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-          <div class="file-name">${item.name}</div>
-          <div class="file-meta">${item.meta}</div>
-          <div class="file-status">복구됨</div>
-        </div>`).join('');
-      hist.innerHTML = restored + hist.innerHTML;
-    }
-  }
+  renderUploadHistory(savedHistory || []);
 
   drawHomeChart();
   buildHeatmap('homeHeatmap');
