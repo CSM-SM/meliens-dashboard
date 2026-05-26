@@ -920,6 +920,8 @@ function getTextColor(){ return isDark ? '#7A90A8' : '#8A9BB0'; }
 let currentPage = 'home';
 function showPage(id, el){
   currentPage = id;
+  // 현재 페이지 저장 (새로고침 시 복구용)
+  try { localStorage.setItem('meliens_current_page', id); } catch(e){}
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.getElementById('page-'+id).classList.add('active');
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
@@ -2960,6 +2962,21 @@ window.addEventListener('DOMContentLoaded', ()=>{
   } else {
     renderGoalBars();
   }
+
+  // ── 마지막으로 보던 페이지로 복구 ──
+  try {
+    const lastPage = localStorage.getItem('meliens_current_page');
+    if(lastPage && lastPage !== 'home') {
+      const navItems = document.querySelectorAll('.nav-item');
+      const pageNavMap = {
+        sales: 1, ads: 2, b2b: 3, cx: 4, inventory: 5, assets: 6, upload: 7
+      };
+      const navIdx = pageNavMap[lastPage];
+      const targetNav = navIdx !== undefined ? navItems[navIdx] : null;
+      showPage(lastPage, targetNav);
+    }
+  } catch(e){}
+
   if(savedInv && savedInv.length > 0) {
     setTimeout(() => {
       const filterBar = document.getElementById('invFilterBar');
