@@ -510,6 +510,17 @@ tbody tr:hover td{background:var(--surface2)}
           <div class="ch-tab" onclick="setSalesChannel(this,'카카오선물하기')">선물하기</div>
           <div class="ch-tab" onclick="setSalesChannel(this,'토스쇼핑')">토스쇼핑</div>
         </div>
+        <!-- 검색 + 정렬 바 -->
+        <div style="display:flex;align-items:center;gap:8px;padding:10px 0 8px;flex-wrap:wrap">
+          <div style="position:relative;flex:1;min-width:180px">
+            <svg style="position:absolute;left:10px;top:50%;transform:translateY(-50%);width:13px;height:13px;stroke:var(--t3);fill:none;stroke-width:2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input id="salesSearch" type="text" placeholder="품목명 또는 옵션 검색..."
+              oninput="filterSalesTable()"
+              style="width:100%;padding:7px 10px 7px 30px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--t1);font-size:12px">
+          </div>
+          <div style="font-size:11px;color:var(--t3)" id="salesSearchCount"></div>
+          <button onclick="clearSalesSearch()" id="salesSearchClear" style="display:none;font-size:11px;padding:5px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--t3);cursor:pointer">✕ 검색 초기화</button>
+        </div>
         <div class="table-wrap">
           <table id="salesTable">
             <thead><tr>
@@ -552,20 +563,20 @@ tbody tr:hover td{background:var(--surface2)}
       <div class="grid-4" style="margin-bottom:16px">
         <div class="kpi-card"><div class="kpi-accent" style="background:var(--blue)"></div>
           <div class="kpi-label">총 광고비 (주간)</div>
-          <div class="kpi-value" id="ads-kpi-spend">₩8,300,000<span class="kpi-unit">원</span></div>
-          <div class="kpi-change down" id="ads-kpi-spend-sub">▼ 전주 대비 +3.2%</div></div>
+          <div class="kpi-value" id="ads-kpi-spend">--<span class="kpi-unit">원</span></div>
+          <div class="kpi-change neutral" id="ads-kpi-spend-sub">데이터 없음</div></div>
         <div class="kpi-card"><div class="kpi-accent" style="background:var(--teal)"></div>
           <div class="kpi-label">전환 매출 합계</div>
-          <div class="kpi-value" id="ads-kpi-rev">₩16,900,000<span class="kpi-unit">원</span></div>
-          <div class="kpi-change up" id="ads-kpi-rev-sub">▲ +7.1%</div></div>
+          <div class="kpi-value" id="ads-kpi-rev">--<span class="kpi-unit">원</span></div>
+          <div class="kpi-change neutral" id="ads-kpi-rev-sub">데이터 없음</div></div>
         <div class="kpi-card"><div class="kpi-accent" style="background:var(--red)"></div>
           <div class="kpi-label">평균 ROAS</div>
-          <div class="kpi-value" id="ads-kpi-roas">124<span class="kpi-unit">%</span></div>
-          <div class="kpi-change down" id="ads-kpi-roas-sub">▼ 기준 미달</div></div>
+          <div class="kpi-value" id="ads-kpi-roas">--<span class="kpi-unit">%</span></div>
+          <div class="kpi-change neutral" id="ads-kpi-roas-sub">데이터 없음</div></div>
         <div class="kpi-card"><div class="kpi-accent" style="background:var(--amber)"></div>
           <div class="kpi-label">TACOS</div>
-          <div class="kpi-value" id="ads-kpi-tacos">9.8<span class="kpi-unit">%</span></div>
-          <div class="kpi-change neutral" id="ads-kpi-tacos-sub">총매출 대비 광고비율</div></div>
+          <div class="kpi-value" id="ads-kpi-tacos">--<span class="kpi-unit">%</span></div>
+          <div class="kpi-change neutral" id="ads-kpi-tacos-sub">데이터 없음</div></div>
       </div>
 
       <div class="grid-2" style="margin-bottom:14px">
@@ -1577,6 +1588,9 @@ function renderSalesTable(data, channel){
   </tr>`;
 
   tb.innerHTML = rows + totalRow;
+  // 검색창 초기화
+  const searchInput = document.getElementById('salesSearch');
+  if(searchInput && searchInput.value) filterSalesTable();
 }
 
 // ── 목표 설정 ──
@@ -4282,6 +4296,49 @@ function filterByThisWeek(rows, dateColName) {
     return d >= mon && d <= sun;
   });
   return { filtered, hasDate: true, total: rows.length, thisWeek: filtered.length, mon, sun };
+}
+
+
+// ── 매출 테이블 검색 필터 ──
+function filterSalesTable() {
+  const keyword = (document.getElementById('salesSearch')?.value || '').toLowerCase().trim();
+  const rows = document.querySelectorAll('#salesBody tr');
+  let visible = 0, total = 0;
+
+  rows.forEach(row => {
+    // 합계 행은 항상 표시
+    if(row.querySelector('[style*="navy"]') || row.style.background?.includes('surface2')) {
+      return;
+    }
+    total++;
+    const name = (row.cells[0]?.textContent || '').toLowerCase();
+    const opt  = (row.cells[1]?.textContent || '').toLowerCase();
+    const sku  = (row.cells[2]?.textContent || '').toLowerCase();
+    if(!keyword || name.includes(keyword) || opt.includes(keyword) || sku.includes(keyword)) {
+      row.style.display = '';
+      visible++;
+    } else {
+      row.style.display = 'none';
+    }
+  });
+
+  // 검색 결과 카운트
+  const countEl = document.getElementById('salesSearchCount');
+  const clearBtn = document.getElementById('salesSearchClear');
+  if(countEl) {
+    if(keyword) {
+      countEl.textContent = `${visible}/${total}개 표시 중`;
+      countEl.style.color = visible===0?'var(--red)':'var(--t3)';
+    } else {
+      countEl.textContent = '';
+    }
+  }
+  if(clearBtn) clearBtn.style.display = keyword ? 'block' : 'none';
+}
+
+function clearSalesSearch() {
+  const input = document.getElementById('salesSearch');
+  if(input) { input.value = ''; filterSalesTable(); input.focus(); }
 }
 
 // ── INIT ──
