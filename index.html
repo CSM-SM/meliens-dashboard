@@ -273,7 +273,6 @@ tbody tr:hover td{background:var(--surface2)}
     <div class="nav-item" onclick="showPage('ads',this)">
       <svg viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
       광고 성과
-      <span class="nav-badge">!</span>
     </div>
     <div class="nav-item" onclick="showPage('b2b',this)">
       <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
@@ -554,17 +553,21 @@ tbody tr:hover td{background:var(--surface2)}
 
       <div class="grid-4" style="margin-bottom:16px">
         <div class="kpi-card"><div class="kpi-accent" style="background:var(--blue)"></div>
-          <div class="kpi-label">총 광고비 (주간)</div><div class="kpi-value">₩8,300,000<span class="kpi-unit">원</span></div>
-          <div class="kpi-change down">▼ 전주 대비 +3.2%</div></div>
+          <div class="kpi-label">총 광고비 (주간)</div>
+          <div class="kpi-value" id="ads-kpi-spend">₩8,300,000<span class="kpi-unit">원</span></div>
+          <div class="kpi-change down" id="ads-kpi-spend-sub">▼ 전주 대비 +3.2%</div></div>
         <div class="kpi-card"><div class="kpi-accent" style="background:var(--teal)"></div>
-          <div class="kpi-label">전환 매출 합계</div><div class="kpi-value">₩16,900,000<span class="kpi-unit">원</span></div>
-          <div class="kpi-change up">▲ +7.1%</div></div>
+          <div class="kpi-label">전환 매출 합계</div>
+          <div class="kpi-value" id="ads-kpi-rev">₩16,900,000<span class="kpi-unit">원</span></div>
+          <div class="kpi-change up" id="ads-kpi-rev-sub">▲ +7.1%</div></div>
         <div class="kpi-card"><div class="kpi-accent" style="background:var(--red)"></div>
-          <div class="kpi-label">평균 ROAS</div><div class="kpi-value">124<span class="kpi-unit">%</span></div>
-          <div class="kpi-change down">▼ 기준 미달</div></div>
+          <div class="kpi-label">평균 ROAS</div>
+          <div class="kpi-value" id="ads-kpi-roas">124<span class="kpi-unit">%</span></div>
+          <div class="kpi-change down" id="ads-kpi-roas-sub">▼ 기준 미달</div></div>
         <div class="kpi-card"><div class="kpi-accent" style="background:var(--amber)"></div>
-          <div class="kpi-label">TACOS</div><div class="kpi-value">9.8<span class="kpi-unit">%</span></div>
-          <div class="kpi-change neutral">총매출 대비 광고비율</div></div>
+          <div class="kpi-label">TACOS</div>
+          <div class="kpi-value" id="ads-kpi-tacos">9.8<span class="kpi-unit">%</span></div>
+          <div class="kpi-change neutral" id="ads-kpi-tacos-sub">총매출 대비 광고비율</div></div>
       </div>
 
       <div class="grid-2" style="margin-bottom:14px">
@@ -717,29 +720,90 @@ tbody tr:hover td{background:var(--surface2)}
     <!-- ═══ CX PAGE ═══ -->
     <div class="page" id="page-cx">
       <div class="section-title">CX / VOC 관리</div>
-      <div class="section-sub">고객 목소리(VOC) 유형별 통계와 브랜드 서비스 품질을 모니터링합니다.</div>
+      <div class="section-sub">고객 목소리(VOC) 유형별 통계와 서비스 품질을 직접 입력해 관리합니다. 데이터는 브라우저에 자동 저장됩니다.</div>
 
+      <!-- KPI 카드 -->
       <div class="grid-4" style="margin-bottom:16px">
         <div class="kpi-card"><div class="kpi-accent" style="background:var(--teal)"></div>
-          <div class="kpi-label">CS 만족도</div><div class="kpi-value">4.7<span class="kpi-unit">/5</span></div>
-          <div class="kpi-change up">▲ 굿서비스 유지</div></div>
+          <div class="kpi-label">CS 만족도</div>
+          <div class="kpi-value" id="cx-satisfaction">--<span class="kpi-unit">/5</span></div>
+          <div class="kpi-change up" id="cx-satisfaction-sub">데이터 입력 필요</div>
+        </div>
         <div class="kpi-card"><div class="kpi-accent" style="background:var(--blue)"></div>
-          <div class="kpi-label">이번 주 VOC 건수</div><div class="kpi-value">48<span class="kpi-unit">건</span></div>
-          <div class="kpi-change down">▼ 전주 대비 +8건</div></div>
+          <div class="kpi-label">이번 주 VOC 건수</div>
+          <div class="kpi-value" id="cx-voc-total">--<span class="kpi-unit">건</span></div>
+          <div class="kpi-change neutral" id="cx-voc-sub">전체 유형 합계</div>
+        </div>
         <div class="kpi-card"><div class="kpi-accent" style="background:var(--amber)"></div>
-          <div class="kpi-label">평균 응대 시간</div><div class="kpi-value">2.3<span class="kpi-unit">시간</span></div>
-          <div class="kpi-change up">▲ 목표 4시간 이내</div></div>
+          <div class="kpi-label">평균 응대 시간</div>
+          <div class="kpi-value" id="cx-response">--<span class="kpi-unit">시간</span></div>
+          <div class="kpi-change neutral" id="cx-response-sub">목표 4시간 이내</div>
+        </div>
         <div class="kpi-card"><div class="kpi-accent" style="background:var(--red)"></div>
-          <div class="kpi-label">제품 불량률</div><div class="kpi-value">0.8<span class="kpi-unit">%</span></div>
-          <div class="kpi-change up">▲ 전주 –32% 감소</div></div>
+          <div class="kpi-label">제품 불량률</div>
+          <div class="kpi-value" id="cx-defect">--<span class="kpi-unit">%</span></div>
+          <div class="kpi-change neutral" id="cx-defect-sub">불량 건수 기준</div>
+        </div>
+      </div>
+
+      <!-- 입력 폼 -->
+      <div class="card" style="margin-bottom:14px">
+        <div class="card-header">
+          <div class="card-title">📝 이번 주 CX 데이터 입력</div>
+          <button onclick="saveCXData()" style="padding:7px 16px;background:var(--navy);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">저장</button>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px">
+          <div>
+            <label style="font-size:11px;font-weight:700;color:var(--t3);display:block;margin-bottom:5px">CS 만족도 (0~5)</label>
+            <input id="cx-i-satisfaction" type="number" min="0" max="5" step="0.1" placeholder="예) 4.7" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--t1);font-size:13px">
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:700;color:var(--t3);display:block;margin-bottom:5px">평균 응대 시간 (시간)</label>
+            <input id="cx-i-response" type="number" min="0" step="0.1" placeholder="예) 2.3" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--t1);font-size:13px">
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:700;color:var(--t3);display:block;margin-bottom:5px">제품 불량률 (%)</label>
+            <input id="cx-i-defect" type="number" min="0" step="0.1" placeholder="예) 0.8" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--t1);font-size:13px">
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:700;color:var(--t3);display:block;margin-bottom:5px">굿서비스 유지</label>
+            <select id="cx-i-goodservice" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--t1);font-size:13px">
+              <option value="yes">✅ 유지 중</option>
+              <option value="no">❌ 미달</option>
+            </select>
+          </div>
+        </div>
+        <div style="font-size:12px;font-weight:700;color:var(--t2);margin-bottom:10px">VOC 유형별 건수 입력</div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px">
+          <div>
+            <label style="font-size:11px;color:var(--t3);display:block;margin-bottom:5px">🚚 배송 지연</label>
+            <input id="cx-i-delivery" type="number" min="0" placeholder="0" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--t1);font-size:13px">
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--t3);display:block;margin-bottom:5px">⚠️ 제품 불량</label>
+            <input id="cx-i-defect-cnt" type="number" min="0" placeholder="0" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--t1);font-size:13px">
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--t3);display:block;margin-bottom:5px">↩️ 단순 변심</label>
+            <input id="cx-i-change" type="number" min="0" placeholder="0" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--t1);font-size:13px">
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--t3);display:block;margin-bottom:5px">❓ 문의/기타</label>
+            <input id="cx-i-inquiry" type="number" min="0" placeholder="0" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--t1);font-size:13px">
+          </div>
+        </div>
+        <div style="margin-top:12px">
+          <label style="font-size:11px;font-weight:700;color:var(--t3);display:block;margin-bottom:5px">채널별 리뷰 평점 (쿠팡,스스,자사몰,지그재그,무신사 순서로 쉼표 구분)</label>
+          <input id="cx-i-ratings" type="text" placeholder="예) 4.8,4.7,4.6,4.5,4.3" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--t1);font-size:13px">
+        </div>
       </div>
 
       <div class="grid-2">
         <div class="card">
-          <div class="card-header"><div class="card-title">VOC 유형별 현황</div><div class="card-sub">이번 주</div></div>
+          <div class="card-header"><div class="card-title">VOC 유형별 현황</div><div class="card-sub" id="cx-voc-date">이번 주</div></div>
           <div style="display:flex;align-items:center;gap:20px">
             <div style="position:relative;width:180px;height:180px;flex-shrink:0">
-              <canvas id="vocChart" role="img" aria-label="VOC 유형별 원형 차트">배송지연:35% 제품불량:25% 단순변심:20% 문의:20%</canvas>
+              <canvas id="vocChart" role="img" aria-label="VOC 유형별 원형 차트"></canvas>
             </div>
             <div class="voc-legend" id="vocLegend"></div>
           </div>
@@ -747,7 +811,7 @@ tbody tr:hover td{background:var(--surface2)}
         <div class="card">
           <div class="card-header"><div class="card-title">채널별 리뷰 평점</div></div>
           <div style="position:relative;height:200px">
-            <canvas id="reviewChart" role="img" aria-label="채널별 리뷰 평점 비교">쿠팡:4.8 스마트스토어:4.7 자사몰:4.6 지그재그:4.5 무신사:4.3</canvas>
+            <canvas id="reviewChart" role="img" aria-label="채널별 리뷰 평점 비교"></canvas>
           </div>
         </div>
       </div>
@@ -891,19 +955,50 @@ tbody tr:hover td{background:var(--surface2)}
 
     <!-- ═══ ASSETS PAGE ═══ -->
     <div class="page" id="page-assets">
-      <div class="section-title">디자인 에셋 라이브러리</div>
-      <div class="section-sub">SKU별 / 채널별 디자인 파일을 관리합니다. 마우스를 올리면 빠른 작업 버튼이 나타납니다.</div>
-      <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">
-        <select style="font-size:12px;padding:7px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--t1)">
-          <option>전체 상품군</option><option>넥밴드 선풍기</option><option>스마트 무드등</option><option>미니 청소기</option>
-        </select>
-        <div class="ch-tab active" style="border-radius:8px">전체</div>
-        <div class="ch-tab" style="border-radius:8px">상세페이지</div>
-        <div class="ch-tab" style="border-radius:8px">썸네일</div>
-        <div class="ch-tab" style="border-radius:8px">배너</div>
-        <div class="ch-tab" style="border-radius:8px">SNS 소재</div>
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:4px;flex-wrap:wrap;gap:10px">
+        <div>
+          <div class="section-title">디자인 에셋 라이브러리</div>
+          <div class="section-sub">이미지, PDF 등 디자인 파일을 업로드하여 관리합니다. 브라우저에 자동 저장됩니다.</div>
+        </div>
+        <label style="display:flex;align-items:center;gap:7px;padding:9px 16px;background:var(--navy);color:#fff;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer">
+          <svg style="width:14px;height:14px;stroke:#fff;fill:none;stroke-width:2.5" viewBox="0 0 24 24"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>
+          파일 업로드
+          <input type="file" id="assetFileInput" accept="image/*,.pdf" multiple style="display:none" onchange="handleAssetUpload(event)">
+        </label>
       </div>
+
+      <!-- 필터 -->
+      <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;align-items:center">
+        <input id="assetSearch" type="text" placeholder="파일명 검색..." oninput="renderAssets()"
+          style="font-size:12px;padding:7px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--t1);min-width:160px">
+        <div id="assetTagFilter" style="display:flex;gap:5px;flex-wrap:wrap">
+          <button onclick="setAssetFilter('전체')" class="asset-filter-btn active" style="font-size:11px;padding:5px 12px;border-radius:20px;border:1px solid var(--border);background:var(--navy);color:#fff;cursor:pointer;font-weight:700;font-family:Montserrat,sans-serif">전체</button>
+          <button onclick="setAssetFilter('이미지')" class="asset-filter-btn" style="font-size:11px;padding:5px 12px;border-radius:20px;border:1px solid var(--border);background:var(--surface);color:var(--t3);cursor:pointer;font-weight:700;font-family:Montserrat,sans-serif">이미지</button>
+          <button onclick="setAssetFilter('PDF')" class="asset-filter-btn" style="font-size:11px;padding:5px 12px;border-radius:20px;border:1px solid var(--border);background:var(--surface);color:var(--t3);cursor:pointer;font-weight:700;font-family:Montserrat,sans-serif">PDF</button>
+        </div>
+        <div style="margin-left:auto;font-size:11px;color:var(--t3)" id="assetStorageInfo"></div>
+      </div>
+
+      <!-- 드래그앤드롭 업로드 존 -->
+      <div id="assetDropZone" style="border:2px dashed var(--border);border-radius:12px;padding:28px;text-align:center;margin-bottom:16px;cursor:pointer;transition:all .2s;background:var(--surface2)"
+        ondragover="event.preventDefault();this.style.borderColor='var(--blue)';this.style.background='rgba(0,122,255,0.04)'"
+        ondragleave="this.style.borderColor='var(--border)';this.style.background='var(--surface2)'"
+        ondrop="handleAssetDrop(event)"
+        onclick="document.getElementById('assetFileInput').click()">
+        <svg style="width:32px;height:32px;stroke:var(--t3);fill:none;stroke-width:1.5;margin-bottom:8px" viewBox="0 0 24 24"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>
+        <p style="font-size:13px;color:var(--t2);margin-bottom:3px">이미지 / PDF 파일을 드래그하거나 클릭해서 업로드</p>
+        <span style="font-size:11px;color:var(--t3)">JPG, PNG, GIF, PDF 지원 · 파일당 최대 2MB</span>
+      </div>
+
+      <!-- 에셋 그리드 -->
       <div class="asset-grid" id="assetGrid"></div>
+
+      <!-- 빈 상태 -->
+      <div id="assetEmpty" style="display:none;padding:48px;text-align:center;color:var(--t3)">
+        <svg style="width:40px;height:40px;stroke:var(--t3);fill:none;stroke-width:1.5;margin-bottom:12px" viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+        <div style="font-size:14px;font-weight:600;color:var(--t2);margin-bottom:6px">업로드된 파일이 없습니다</div>
+        <div style="font-size:12px">위 버튼이나 드래그앤드롭으로 파일을 올려주세요</div>
+      </div>
     </div>
 
     <!-- ═══ UPLOAD PAGE ═══ -->
@@ -1012,7 +1107,8 @@ function showPage(id, el){
   const titles = {home:'종합 대시보드',sales:'이커머스 매출 관리',ads:'광고 성과 대시보드',b2b:'B2B / 신규 매출',cx:'CX / VOC 관리',inventory:'재고 관리',assets:'디자인 에셋 라이브러리',upload:'데이터 업로드 센터'};
   document.getElementById('pageTitle').textContent = titles[id] || '';
   if(id==='ads') setTimeout(()=>{drawAdsCharts();},50);
-  if(id==='cx') setTimeout(()=>{drawCxCharts();},50);
+  if(id==='cx') setTimeout(()=>{renderCXPage();},50);
+  if(id==='assets') setTimeout(()=>{renderAssets();},50);
   if(id==='inventory' && invRawData.length===0) setTimeout(()=>{loadInventoryFromSheet();},100);
 }
 
@@ -1126,28 +1222,63 @@ function drawCxCharts(){
   if(!c1||!c2) return;
   if(vocChartInst) vocChartInst.destroy();
   if(reviewChartInst) reviewChartInst.destroy();
-  const vocData=[{label:'배송 지연',val:35,color:'#FF4B4B'},{label:'제품 불량',val:25,color:'#F5A623'},{label:'단순 변심',val:20,color:'#007AFF'},{label:'문의/기타',val:20,color:'#11CAA0'}];
+
+  // 실제 입력 데이터 사용
+  const d = cxData || {};
+  const total = (d.delivery||0)+(d.defectCnt||0)+(d.change||0)+(d.inquiry||0);
+
+  const vocData = total > 0
+    ? [
+        {label:'배송 지연', val:d.delivery||0,  color:'#FF4B4B'},
+        {label:'제품 불량', val:d.defectCnt||0, color:'#F5A623'},
+        {label:'단순 변심', val:d.change||0,    color:'#007AFF'},
+        {label:'문의/기타', val:d.inquiry||0,   color:'#11CAA0'},
+      ].filter(x=>x.val>0)
+    : [{label:'데이터 없음',val:1,color:'var(--border)'}];
+
   vocChartInst = new Chart(c1,{
     type:'doughnut',
-    data:{labels:vocData.map(d=>d.label),datasets:[{data:vocData.map(d=>d.val),backgroundColor:vocData.map(d=>d.color),borderWidth:0,hoverOffset:4}]},
+    data:{labels:vocData.map(x=>x.label),datasets:[{data:vocData.map(x=>x.val),backgroundColor:vocData.map(x=>x.color),borderWidth:0,hoverOffset:4}]},
     options:{responsive:true,maintainAspectRatio:false,cutout:'72%',plugins:{legend:{display:false}}}
   });
   const legend=document.getElementById('vocLegend');
   if(legend){
-    legend.innerHTML=vocData.map(d=>`<div class="voc-item"><div class="voc-dot" style="background:${d.color}"></div>${d.label}<span class="voc-pct">${d.val}%</span></div>`).join('');
+    if(total>0){
+      legend.innerHTML=vocData.map(x=>{
+        const pct=Math.round(x.val/total*100);
+        return `<div class="voc-item"><div class="voc-dot" style="background:${x.color}"></div>${x.label}<span class="voc-pct">${pct}% (${x.val}건)</span></div>`;
+      }).join('');
+    } else {
+      legend.innerHTML='<div style="font-size:12px;color:var(--t3)">위 입력 폼에서 VOC 건수를 입력하세요</div>';
+    }
   }
+
+  // 리뷰 평점 — 입력값 파싱
+  const ratingStr = d.ratings || '';
+  const ratingVals = ratingStr.split(',').map(v=>parseFloat(v.trim())).filter(v=>!isNaN(v));
+  const labels = ['쿠팡','스스','자사몰','지그재그','무신사','11번가','G마켓','29CM'];
+  const chartLabels = ratingVals.length>0 ? labels.slice(0,ratingVals.length) : labels.slice(0,5);
+  const chartData   = ratingVals.length>0 ? ratingVals : [];
+  const minRating   = chartData.length>0 ? Math.max(0, Math.min(...chartData)-0.5) : 0;
+  const maxRating   = chartData.length>0 ? Math.min(5, Math.max(...chartData)+0.3) : 5;
+
   reviewChartInst = new Chart(c2,{
     type:'bar',
     data:{
-      labels:['쿠팡','스스','자사몰','지그재그','무신사'],
-      datasets:[{label:'평점',data:[4.8,4.7,4.6,4.5,4.3],backgroundColor:'rgba(0,122,255,0.7)',borderRadius:6,borderSkipped:false}]
+      labels: chartLabels,
+      datasets:[{
+        label:'평점',
+        data: chartData.length>0 ? chartData : [0,0,0,0,0],
+        backgroundColor: chartData.map(v=>v>=4.5?'rgba(17,202,160,0.75)':v>=4.0?'rgba(0,122,255,0.7)':'rgba(245,166,35,0.7)'),
+        borderRadius:6,borderSkipped:false
+      }]
     },
     options:{
       responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{display:false}},
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:v=>`⭐ ${v.raw}`}}},
       scales:{
         x:{grid:{color:getColor()},ticks:{color:getTextColor(),font:{size:11}}},
-        y:{grid:{color:getColor()},ticks:{color:getTextColor(),font:{size:11}},min:4,max:5}
+        y:{grid:{color:getColor()},ticks:{color:getTextColor(),font:{size:11}},min:minRating,max:maxRating}
       }
     }
   });
@@ -1666,37 +1797,7 @@ function buildB2B(){
   loadB2BData();
   renderB2B();
 }
-function buildAssets(){
-  const grid=document.getElementById('assetGrid');
-  if(!grid) return;
-  const items=[
-    {name:'넥밴드선풍기_쿠팡_상세',tags:['상세페이지'],color:'#007AFF'},
-    {name:'넥밴드선풍기_썸네일_v3',tags:['썸네일'],color:'#11CAA0'},
-    {name:'무드등_기획전_배너',tags:['배너'],color:'#F5A623'},
-    {name:'선풍기_인스타_소재',tags:['SNS 소재'],color:'#6C5CE7'},
-    {name:'청소기_스스_상세',tags:['상세페이지'],color:'#007AFF'},
-    {name:'청소기_썸네일_최종',tags:['썸네일'],color:'#11CAA0'},
-    {name:'디퓨저_29CM_배너',tags:['배너'],color:'#F5A623'},
-    {name:'무드등_SNS_릴스',tags:['SNS 소재'],color:'#6C5CE7'},
-  ];
-  const tagClass={'상세페이지':'tag-detail','썸네일':'tag-thumb','배너':'tag-banner','SNS 소재':'tag-sns'};
-  grid.innerHTML=items.map((item,i)=>`
-    <div class="asset-card">
-      <div class="asset-thumb" style="background:${item.color}18">
-        <div style="width:60px;height:60px;border-radius:12px;background:${item.color}30;display:flex;align-items:center;justify-content:center">
-          <svg style="width:28px;height:28px;stroke:${item.color};fill:none;stroke-width:1.5" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-        </div>
-        <div class="asset-hover">
-          <div class="asset-action" title="미리보기"><svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></div>
-          <div class="asset-action" title="다운로드"><svg viewBox="0 0 24 24"><polyline points="8 17 12 21 16 17"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.88 18.09A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg></div>
-        </div>
-      </div>
-      <div class="asset-info">
-        <div class="asset-name" title="${item.name}">${item.name}</div>
-        <div class="asset-tags">${item.tags.map(t=>`<span class="asset-tag ${tagClass[t]||'tag-detail'}">${t}</span>`).join('')}</div>
-      </div>
-    </div>`).join('');
-}
+// buildAssets → renderAssets 로 대체됨
 
 // ════════════════════════════════════════════════
 // 스마트 매핑 엔진 — 채널별 컬럼명 자동 인식
@@ -1948,6 +2049,7 @@ function applyDataToDashboard() {
 
   // ── 광고 테이블 ──
   if (uploadedAdsData.length) {
+    updateAdsKPI(uploadedAdsData);
     const tb = document.getElementById('adsBody');
     if (tb) {
       tb.innerHTML = uploadedAdsData.map(r => {
@@ -3253,6 +3355,238 @@ function generateBriefing() {
   showToast('✅ 브리핑이 업데이트됐습니다');
 }
 
+
+// ════════════════════════════════════════════════
+// CX / VOC 데이터 관리
+// ════════════════════════════════════════════════
+const CX_STORAGE_KEY = 'meliens_cx_data';
+let cxData = { satisfaction:0, response:0, defect:0, goodservice:'yes',
+               delivery:0, defectCnt:0, change:0, inquiry:0,
+               ratings:'', updatedAt:'' };
+
+function loadCXData() {
+  try {
+    const saved = localStorage.getItem(CX_STORAGE_KEY);
+    if(saved) cxData = JSON.parse(saved);
+  } catch(e) {}
+}
+function saveCXData() {
+  cxData = {
+    satisfaction: parseFloat(document.getElementById('cx-i-satisfaction').value) || 0,
+    response:     parseFloat(document.getElementById('cx-i-response').value) || 0,
+    defect:       parseFloat(document.getElementById('cx-i-defect').value) || 0,
+    goodservice:  document.getElementById('cx-i-goodservice').value,
+    delivery:     parseInt(document.getElementById('cx-i-delivery').value) || 0,
+    defectCnt:    parseInt(document.getElementById('cx-i-defect-cnt').value) || 0,
+    change:       parseInt(document.getElementById('cx-i-change').value) || 0,
+    inquiry:      parseInt(document.getElementById('cx-i-inquiry').value) || 0,
+    ratings:      document.getElementById('cx-i-ratings').value.trim(),
+    updatedAt:    new Date().toLocaleDateString('ko-KR',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'})
+  };
+  try { localStorage.setItem(CX_STORAGE_KEY, JSON.stringify(cxData)); } catch(e) {}
+  renderCXPage();
+  showToast('✅ CX 데이터가 저장됐습니다');
+}
+function renderCXPage() {
+  loadCXData();
+  // 폼에 값 채우기
+  const setVal = (id, val) => { const el=document.getElementById(id); if(el) el.value=val||''; };
+  setVal('cx-i-satisfaction', cxData.satisfaction||'');
+  setVal('cx-i-response',     cxData.response||'');
+  setVal('cx-i-defect',       cxData.defect||'');
+  setVal('cx-i-delivery',     cxData.delivery||'');
+  setVal('cx-i-defect-cnt',   cxData.defectCnt||'');
+  setVal('cx-i-change',       cxData.change||'');
+  setVal('cx-i-inquiry',      cxData.inquiry||'');
+  setVal('cx-i-ratings',      cxData.ratings||'');
+  const gsEl = document.getElementById('cx-i-goodservice');
+  if(gsEl) gsEl.value = cxData.goodservice||'yes';
+
+  // KPI 카드
+  const upd=(id,html)=>{const el=document.getElementById(id);if(el)el.innerHTML=html;};
+  const total = (cxData.delivery||0)+(cxData.defectCnt||0)+(cxData.change||0)+(cxData.inquiry||0);
+  if(cxData.satisfaction>0) {
+    upd('cx-satisfaction', `${cxData.satisfaction}<span class="kpi-unit">/5</span>`);
+    upd('cx-satisfaction-sub', cxData.goodservice==='yes'?'▲ 굿서비스 유지':'▼ 굿서비스 미달');
+  }
+  if(total>0) {
+    upd('cx-voc-total', `${total}<span class="kpi-unit">건</span>`);
+    upd('cx-voc-sub', `배송${cxData.delivery} 불량${cxData.defectCnt} 변심${cxData.change} 문의${cxData.inquiry}`);
+  }
+  if(cxData.response>0) {
+    upd('cx-response', `${cxData.response}<span class="kpi-unit">시간</span>`);
+    const ok = cxData.response <= 4;
+    upd('cx-response-sub', ok?'▲ 목표 이내':'▼ 목표 초과');
+  }
+  if(cxData.defect>0) {
+    upd('cx-defect', `${cxData.defect}<span class="kpi-unit">%</span>`);
+    upd('cx-defect-sub', cxData.defect<1?'▲ 양호':'▼ 개선 필요');
+  }
+  if(cxData.updatedAt) {
+    const dateEl = document.getElementById('cx-voc-date');
+    if(dateEl) dateEl.textContent = cxData.updatedAt + ' 업데이트';
+  }
+  // 차트 업데이트
+  drawCxCharts();
+}
+
+// ════════════════════════════════════════════════
+// 광고 성과 실제 데이터 연동
+// ════════════════════════════════════════════════
+function updateAdsKPI(adsData) {
+  const totalSpend = adsData.reduce((s,r)=>s+r.spend,0);
+  const totalRev   = adsData.reduce((s,r)=>s+r.rev,0);
+  const avgRoas    = adsData.length>0 ? Math.round(adsData.reduce((s,r)=>s+r.roas,0)/adsData.length) : 0;
+  const salesRev   = uploadedSalesData.length>0 ? uploadedSalesData.reduce((s,r)=>s+r.rev,0) : 0;
+  const tacos      = salesRev>0 ? (totalSpend/salesRev*100).toFixed(1) : 0;
+
+  const upd=(id,html)=>{const el=document.getElementById(id);if(el)el.innerHTML=html;};
+  upd('ads-kpi-spend', `₩${Math.round(totalSpend).toLocaleString()}<span class="kpi-unit">원</span>`);
+  upd('ads-kpi-rev',   `₩${Math.round(totalRev).toLocaleString()}<span class="kpi-unit">원</span>`);
+  upd('ads-kpi-roas',  `${avgRoas}<span class="kpi-unit">%</span>`);
+  upd('ads-kpi-tacos', `${tacos}<span class="kpi-unit">%</span>`);
+  const roasOk = avgRoas >= 130;
+  upd('ads-kpi-roas-sub', roasOk?'▲ 기준치 충족':'▼ 기준치(130%) 미달');
+  upd('ads-kpi-spend-sub', `총 ${adsData.length}개 매체`);
+  upd('ads-kpi-rev-sub', `ROAS 평균 ${avgRoas}%`);
+  upd('ads-kpi-tacos-sub', salesRev>0?'총매출 대비 광고비율':'매출 데이터 필요');
+}
+
+// ════════════════════════════════════════════════
+// 에셋 라이브러리 — 파일 업로드 & 관리
+// ════════════════════════════════════════════════
+const ASSET_STORAGE_KEY = 'meliens_assets';
+let assetList = [];
+let assetFilter = '전체';
+
+function loadAssets() {
+  try {
+    const saved = localStorage.getItem(ASSET_STORAGE_KEY);
+    if(saved) assetList = JSON.parse(saved);
+  } catch(e) { assetList = []; }
+}
+function saveAssets() {
+  try { localStorage.setItem(ASSET_STORAGE_KEY, JSON.stringify(assetList)); } catch(e) {
+    showToast('❌ 저장 용량 초과. 일부 파일을 삭제해주세요.');
+  }
+}
+
+function handleAssetUpload(event) {
+  const files = Array.from(event.target.files);
+  processAssetFiles(files);
+  event.target.value = '';
+}
+function handleAssetDrop(event) {
+  event.preventDefault();
+  document.getElementById('assetDropZone').style.borderColor='var(--border)';
+  document.getElementById('assetDropZone').style.background='var(--surface2)';
+  const files = Array.from(event.dataTransfer.files).filter(f=>f.type.startsWith('image/')||f.type==='application/pdf');
+  processAssetFiles(files);
+}
+function processAssetFiles(files) {
+  let processed = 0;
+  files.forEach(file => {
+    if(file.size > 2*1024*1024) { showToast(`⚠️ ${file.name} 파일이 2MB를 초과합니다`); return; }
+    const reader = new FileReader();
+    reader.onload = e => {
+      const asset = {
+        id:       Date.now().toString() + Math.random().toString(36).slice(2),
+        name:     file.name,
+        type:     file.type.startsWith('image/') ? '이미지' : 'PDF',
+        size:     (file.size/1024).toFixed(0) + 'KB',
+        data:     e.target.result,
+        uploadedAt: new Date().toLocaleDateString('ko-KR',{month:'2-digit',day:'2-digit'})
+      };
+      assetList.unshift(asset);
+      processed++;
+      if(processed === files.length) {
+        saveAssets();
+        renderAssets();
+        showToast(`✅ ${processed}개 파일 업로드 완료`);
+      }
+    };
+    reader.readAsDataURL(file);
+  });
+}
+function deleteAsset(id) {
+  if(!confirm('이 파일을 삭제할까요?')) return;
+  assetList = assetList.filter(a=>a.id!==id);
+  saveAssets();
+  renderAssets();
+  showToast('🗑 파일이 삭제됐습니다');
+}
+function downloadAsset(id) {
+  const asset = assetList.find(a=>a.id===id);
+  if(!asset) return;
+  const a = document.createElement('a');
+  a.href = asset.data;
+  a.download = asset.name;
+  a.click();
+}
+function setAssetFilter(type) {
+  assetFilter = type;
+  document.querySelectorAll('.asset-filter-btn').forEach(btn=>{
+    const isActive = btn.textContent.trim()===type;
+    btn.style.background = isActive?'var(--navy)':'var(--surface)';
+    btn.style.color = isActive?'#fff':'var(--t3)';
+  });
+  renderAssets();
+}
+function renderAssets() {
+  loadAssets();
+  const search = (document.getElementById('assetSearch')?.value||'').toLowerCase();
+  const filtered = assetList.filter(a=>{
+    const matchFilter = assetFilter==='전체' || a.type===assetFilter;
+    const matchSearch = !search || a.name.toLowerCase().includes(search);
+    return matchFilter && matchSearch;
+  });
+
+  const grid = document.getElementById('assetGrid');
+  const empty = document.getElementById('assetEmpty');
+  if(!grid) return;
+
+  if(filtered.length===0) {
+    grid.innerHTML='';
+    if(empty) empty.style.display='block';
+  } else {
+    if(empty) empty.style.display='none';
+    grid.innerHTML = filtered.map(a=>`
+      <div class="asset-card">
+        <div class="asset-thumb" style="background:${a.type==='PDF'?'rgba(255,75,75,0.08)':'var(--surface2)'}">
+          ${a.type==='이미지'
+            ? `<img src="${a.data}" style="width:100%;height:100%;object-fit:cover" alt="${a.name}">`
+            : `<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:8px"><svg style="width:36px;height:36px;stroke:var(--red);fill:none;stroke-width:1.5" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><span style="font-size:10px;color:var(--red);font-weight:700;font-family:Montserrat,sans-serif">PDF</span></div>`
+          }
+          <div class="asset-hover">
+            <div class="asset-action" title="다운로드" onclick="downloadAsset('${a.id}')">
+              <svg viewBox="0 0 24 24"><polyline points="8 17 12 21 16 17"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.88 18.09A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>
+            </div>
+            <div class="asset-action" title="삭제" onclick="deleteAsset('${a.id}')" style="background:rgba(255,75,75,0.3)">
+              <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+            </div>
+          </div>
+        </div>
+        <div class="asset-info">
+          <div class="asset-name" title="${a.name}">${a.name}</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px">
+            <div class="asset-tags">
+              <span class="asset-tag ${a.type==='이미지'?'tag-thumb':'tag-detail'}">${a.type}</span>
+            </div>
+            <span style="font-size:9px;color:var(--t3)">${a.size} · ${a.uploadedAt}</span>
+          </div>
+        </div>
+      </div>`).join('');
+  }
+
+  // 용량 표시
+  const totalSize = assetList.reduce((s,a)=>s+(a.data?.length||0),0);
+  const sizeMB = (totalSize/1024/1024).toFixed(1);
+  const infoEl = document.getElementById('assetStorageInfo');
+  if(infoEl) infoEl.textContent = `${assetList.length}개 파일 · ${sizeMB}MB 사용 중`;
+}
+
+function buildAssets(){ renderAssets(); }
+
 // ── INIT ──
 window.addEventListener('DOMContentLoaded', ()=>{
   // 오늘 날짜 + 주차 범위
@@ -3326,7 +3660,8 @@ window.addEventListener('DOMContentLoaded', ()=>{
   buildStockTable();
   buildAdsTable();
   buildB2B();
-  buildAssets();
+  renderAssets();
+  renderCXPage();
 
   // 저장된 데이터가 있으면 대시보드 즉시 업데이트
   if(uploadedSalesData.length > 0) {
