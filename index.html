@@ -477,7 +477,10 @@ tbody tr:hover td{background:var(--surface2)}
 
       <div class="card" style="margin-bottom:14px">
         <div class="card-header">
-          <div class="card-title">채널별 매출 상세</div>
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <div class="card-title" id="salesTableTitle">채널별 매출 상세</div>
+            <div id="salesDataDateBadge" style="display:none;font-size:11px;font-weight:700;font-family:Montserrat,sans-serif;padding:3px 9px;border-radius:12px;background:rgba(0,122,255,0.1);color:var(--blue)"></div>
+          </div>
           <div class="filter-tabs">
             <div class="ftab" onclick="setSalesFilter(this,'일')">일</div><div class="ftab active" onclick="setSalesFilter(this,'주')">주</div><div class="ftab" onclick="setSalesFilter(this,'월')">월</div><div class="ftab" onclick="setSalesFilter(this,'분기')">분기</div><div class="ftab" onclick="setSalesFilter(this,'년')">년</div>
           </div>
@@ -1465,7 +1468,10 @@ function filterSalesByChannel(channel){
   renderSalesTable(scaled, channel);
   // 채널명 헤더 표시
   const title = document.querySelector('#page-sales .card-title');
-  if(title) title.textContent = channel==='전체' ? '채널별 매출 상세' : `${channel} 채널 매출 상세`;
+  const titleEl = document.getElementById('salesTableTitle');
+  if(titleEl) titleEl.textContent = channel==='전체' ? '채널별 매출 상세' : `${channel} 채널 매출 상세`;
+  // 날짜 배지 업데이트
+  updateSalesDateBadge(uploadedSalesData);
   showToast(`${channel} 채널 ${scaled.length}개 SKU`);
 }
 
@@ -1640,6 +1646,7 @@ const salesData=[]; // 실제 데이터는 엑셀 업로드 후 반영됩니다
 function buildSalesTable(){
   const data = uploadedSalesData.length ? uploadedSalesData : salesData;
   renderSalesTable(data, currentSalesChannel);
+  updateSalesDateBadge(uploadedSalesData);
 }
 function buildStockTable(){
   const tb=document.getElementById('stockBody');
@@ -2394,6 +2401,7 @@ function confirmUpload(type) {
   applyDataToDashboard();
   saveUploadHistoryToStorage();
   renderDataStatus(); // 업로드 현황 업데이트
+  updateSalesDateBadge(uploadedSalesData);
 }
 
 // 이전 데이터로 되돌리기
@@ -3947,6 +3955,60 @@ function updateRiskCenter(salesData, adsData) {
       <div class="risk-text">${text}</div>
     </div>`).join('');
 }
+
+// ── 매출 데이터 날짜 배지 ──
+function updateSalesDateBadge(data) {
+  const badge = document.getElementById('salesDataDateBadge');
+  if(!badge) return;
+
+  if(!data || data.length === 0) {
+    badge.style.display = 'none';
+    return;
+  }
+
+  // 업로드된 파일 메타에서 날짜 읽기
+  const meta = loadFromStorage(STORAGE_KEYS.salesMeta);
+  if(meta && meta.filename) {
+    const fn = meta.filename;
+
+    // 카페24: meliens_YYYYMMDD_숫자_숫자.csv
+    const cafe24Match = fn.match(/meliens_(\d{4})(\d{2})(\d{2})_/i);
+    if(cafe24Match) {
+      const [,y,m,d] = cafe24Match;
+      badge.textContent = `${y}.${m}.${d} 기준`;
+      badge.style.display = 'inline-block';
+      return;
+    }
+
+    // 일반 파일명에서 날짜 추출 시도
+    // W50, W49 등 주차 정보
+    const weekMatch = fn.match(/W(\d{2})/i);
+    if(weekMatch) {
+      badge.textContent = `${weekMatch[0]} 기준`;
+      badge.style.display = 'inline-block';
+      return;
+    }
+
+    // YYYYMMDD 패턴
+    const dateMatch = fn.match(/(\d{4})(\d{2})(\d{2})/);
+    if(dateMatch) {
+      const [,y,m,d] = dateMatch;
+      badge.textContent = `${y}.${m}.${d} 기준`;
+      badge.style.display = 'inline-block';
+      return;
+    }
+
+    // 날짜 없으면 업로드 시간 표시
+    if(meta.uploadedAt) {
+      badge.textContent = `${meta.uploadedAt} 업로드`;
+      badge.style.display = 'inline-block';
+      return;
+    }
+  }
+
+  badge.style.display = 'none';
+}
+
 // ── INIT ──
 window.addEventListener('DOMContentLoaded', ()=>{
   // 오늘 날짜 + 주차 범위
