@@ -374,7 +374,7 @@ tbody tr:hover td{background:var(--surface2)}
       <div class="grid-2-1" style="margin-bottom:14px">
         <div class="card">
           <div class="card-header">
-            <div class="card-title">주간 매출 추이</div>
+            <div class="card-title" id="homeChartTitle">주간 매출 추이</div>
             <div class="filter-tabs">
               <div class="ftab" onclick="setHomeFilter(this,'일')">일</div><div class="ftab active" onclick="setHomeFilter(this,'주')">주</div><div class="ftab" onclick="setHomeFilter(this,'월')">월</div><div class="ftab" onclick="setHomeFilter(this,'년')">년</div>
             </div>
@@ -1202,26 +1202,69 @@ function fmtWon(won){
 function fmtWonFull(won){ return '₩' + Math.round(won).toLocaleString() + '원'; }
 function drawHomeChart(){
   const ctx=document.getElementById('homeChart');
-  if(!ctx)return;
-  if(homeChartInst)homeChartInst.destroy();
-  const rawData=[62000,58000,71000,67000,75000,69000,76000,84700];
-  homeChartInst=new Chart(ctx,{
-    type:'line',
+  if(!ctx) return;
+  if(homeChartInst) homeChartInst.destroy();
+
+  const data = uploadedSalesData.length ? uploadedSalesData : [];
+
+  let labels, chartData, label;
+
+  if(data.length > 0) {
+    // ── 업로드 데이터 기반 ──
+    // 채널별 집계
+    const chMap = {};
+    data.forEach(r => { const ch = r.channel||'기타'; chMap[ch] = (chMap[ch]||0) + r.rev; });
+    const sorted = Object.entries(chMap).sort((a,b)=>b[1]-a[1]);
+
+    labels   = sorted.map(([ch])=>ch);
+    chartData= sorted.map(([,v])=>v);
+    label    = '채널별 매출(원)';
+
+    // 업로드 날짜 배지
+    const meta = loadFromStorage(STORAGE_KEYS.salesMeta);
+    const dateStr = meta?.uploadedAt || '';
+    const titleEl = document.getElementById('homeChartTitle');
+    if(titleEl) titleEl.textContent = '채널별 매출 현황' + (dateStr ? ' · ' + dateStr : '');
+  } else {
+    // ── 데이터 없음 ──
+    labels    = ['데이터 없음'];
+    chartData = [0];
+    label     = '매출(원)';
+    const titleEl = document.getElementById('homeChartTitle');
+    if(titleEl) titleEl.textContent = '주간 매출 추이';
+  }
+
+  const mn = chartData.length > 1 ? Math.min(...chartData) * 0.85 : 0;
+  const mx = chartData.length > 1 ? Math.max(...chartData) * 1.1  : 1000;
+
+  homeChartInst = new Chart(ctx,{
+    type: data.length > 0 ? 'bar' : 'line',
     data:{
-      labels:['W43','W44','W45','W46','W47','W48','W49','W50'],
+      labels,
       datasets:[{
-        label:'매출(원)',data:rawData,
-        borderColor:'#007AFF',backgroundColor:'rgba(0,122,255,0.08)',
-        borderWidth:2.5,pointBackgroundColor:'#007AFF',pointRadius:4,
-        pointHoverRadius:6,fill:true,tension:.4
+        label,
+        data: chartData,
+        backgroundColor: data.length > 0
+          ? chartData.map((_,i) => `rgba(0,122,255,${0.85-i*0.06})`)
+          : 'rgba(0,122,255,0.08)',
+        borderColor: '#007AFF',
+        borderWidth: data.length > 0 ? 0 : 2.5,
+        borderRadius: 6,
+        borderSkipped: false,
+        pointBackgroundColor:'#007AFF',
+        pointRadius: data.length > 0 ? 0 : 4,
+        fill: true, tension:.4
       }]
     },
     options:{
-      responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{display:false},tooltip:{callbacks:{label:v=>'₩'+Math.round(v.raw).toLocaleString()+'원'}}},
+      responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{display:false},
+        tooltip:{callbacks:{label:v=>'₩'+Math.round(v.raw).toLocaleString()+'원'}}
+      },
       scales:{
         x:{grid:{color:getColor()},ticks:{color:getTextColor(),font:{size:11,family:'Montserrat'}}},
-        y:{grid:{color:getColor()},ticks:{color:getTextColor(),font:{size:11,family:'Montserrat'},callback:v=>'₩'+fmtWon(v)},min:50000000,max:95000000}
+        y:{grid:{color:getColor()},ticks:{color:getTextColor(),font:{size:11,family:'Montserrat'},callback:v=>'₩'+fmtWon(v)},min:mn,max:mx}
       }
     }
   });
@@ -1233,9 +1276,10 @@ function drawAdsCharts(){
   if(!c1||!c2) return;
   if(roasChartInst) roasChartInst.destroy();
   if(spendChartInst) spendChartInst.destroy();
-  const media=['네이버 SA','네이버 GFA','구글','메타','카카오'];
-  const roas=[178,142,155,119,131];
-  const colors=roas.map(v=>v<130?'rgba(255,75,75,0.85)':'rgba(0,122,255,0.8)');
+  const adsUsed = uploadedAdsData.length ? uploadedAdsData : [];
+  const media = adsUsed.length > 0 ? adsUsed.map(a=>a.media) : ['데이터 없음'];
+  const roas  = adsUsed.length > 0 ? adsUsed.map(a=>a.roas)  : [0];
+  const colors=roas.map(v=>v>0&&v<130?'rgba(255,75,75,0.85)':'rgba(0,122,255,0.8)');
   roasChartInst = new Chart(c1,{
     type:'bar',
     data:{labels:media,datasets:[{label:'ROAS(%)',data:roas,backgroundColor:colors,borderRadius:6,borderSkipped:false}]},
@@ -1253,8 +1297,8 @@ function drawAdsCharts(){
     data:{
       labels:media,
       datasets:[
-        {label:'광고비(원)',data:[2100000,1400000,1800000,1900000,1100000],backgroundColor:'rgba(0,45,94,0.6)',borderRadius:4,borderSkipped:false},
-        {label:'전환매출(원)',data:[3740000,1990000,2790000,2260000,1440000],backgroundColor:'rgba(17,202,160,0.7)',borderRadius:4,borderSkipped:false}
+        {label:'광고비(원)',data:adsUsed.length>0?adsUsed.map(a=>a.spend):[0],backgroundColor:'rgba(0,45,94,0.6)',borderRadius:4,borderSkipped:false},
+        {label:'전환매출(원)',data:adsUsed.length>0?adsUsed.map(a=>a.rev):[0],backgroundColor:'rgba(17,202,160,0.7)',borderRadius:4,borderSkipped:false}
       ]
     },
     options:{
@@ -1405,11 +1449,11 @@ const periodLabels = {
   '년':  ['2021','2022','2023','2024'],
 };
 const periodBaseData = {
-  '일':  [11200,9800,13400,12100,14200,10800,9000],
-  '주':  [62000,58000,71000,67000,75000,69000,76000,84700],
-  '월':  [210000,195000,280000,265000,310000,290000,320000,298000,275000,330000,315000,340000],
-  '분기':[650000,820000,890000,950000],
-  '년':  [1800000,2400000,3100000,3800000],
+  '일':  [0,0,0,0,0,0,0],
+  '주':  [0,0,0,0,0,0,0,0],
+  '월':  [0,0,0,0,0,0,0,0,0,0,0,0],
+  '분기':[0,0,0,0],
+  '년':  [0,0,0,0],
 };
 
 // ── 홈 차트 기간 필터 ──
@@ -1635,7 +1679,7 @@ function showLowStockModal(){
       </table>
     </div>
     <div style="padding:14px 24px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px">
-      <button onclick="showPage('sales',document.querySelectorAll('.nav-item')[1]);document.getElementById('lowStockModal').remove()" style="padding:9px 18px;background:var(--navy);color:#fff;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;border:none">재고 현황 보기 →</button>
+      <button onclick="showPage('inventory',document.querySelectorAll('.nav-item')[5]);document.getElementById('lowStockModal').remove()" style="padding:9px 18px;background:var(--navy);color:#fff;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;border:none">재고 현황 보기 →</button>
     </div>
   </div>`;
   document.body.appendChild(modal);
@@ -2191,8 +2235,8 @@ function applyDataToDashboard() {
   updateRiskCenter(data, adsData);
 
   showToast(`✅ 데이터 반영 완료 — ${data.length}개 SKU, 총매출 ₩${Math.round(totalRev).toLocaleString()}원`);
-  // 브리핑 자동 업데이트
-  setTimeout(()=>generateBriefing(), 300);
+  // 홈 차트 업데이트 (실제 데이터 기반)
+  setTimeout(()=>{ drawHomeChart(); generateBriefing(); }, 300);
 }
 
 function updateKPI(id, valueHTML, changeText, changeDir) {
