@@ -287,10 +287,7 @@ tbody tr:hover td{background:var(--surface2)}
       재고 관리
     </div>
     <div class="nav-group-label">ASSETS</div>
-    <div class="nav-item" onclick="showPage('assets',this)">
-      <svg viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
-      에셋 라이브러리
-    </div>
+
     <div class="nav-item" onclick="showPage('upload',this)">
       <svg viewBox="0 0 24 24"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>
       데이터 업로드
@@ -962,54 +959,6 @@ tbody tr:hover td{background:var(--surface2)}
       </div>
     </div>
 
-    <!-- ═══ ASSETS PAGE ═══ -->
-    <div class="page" id="page-assets">
-      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:4px;flex-wrap:wrap;gap:10px">
-        <div>
-          <div class="section-title">디자인 에셋 라이브러리</div>
-          <div class="section-sub">이미지, PDF 등 디자인 파일을 업로드하여 관리합니다. 브라우저에 자동 저장됩니다.</div>
-        </div>
-        <label style="display:flex;align-items:center;gap:7px;padding:9px 16px;background:var(--navy);color:#fff;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer">
-          <svg style="width:14px;height:14px;stroke:#fff;fill:none;stroke-width:2.5" viewBox="0 0 24 24"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>
-          파일 업로드
-          <input type="file" id="assetFileInput" accept="image/*,.pdf" multiple style="display:none" onchange="handleAssetUpload(event)">
-        </label>
-      </div>
-
-      <!-- 필터 -->
-      <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;align-items:center">
-        <input id="assetSearch" type="text" placeholder="파일명 검색..." oninput="renderAssets()"
-          style="font-size:12px;padding:7px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--t1);min-width:160px">
-        <div id="assetTagFilter" style="display:flex;gap:5px;flex-wrap:wrap">
-          <button onclick="setAssetFilter('전체')" class="asset-filter-btn active" style="font-size:11px;padding:5px 12px;border-radius:20px;border:1px solid var(--border);background:var(--navy);color:#fff;cursor:pointer;font-weight:700;font-family:Montserrat,sans-serif">전체</button>
-          <button onclick="setAssetFilter('이미지')" class="asset-filter-btn" style="font-size:11px;padding:5px 12px;border-radius:20px;border:1px solid var(--border);background:var(--surface);color:var(--t3);cursor:pointer;font-weight:700;font-family:Montserrat,sans-serif">이미지</button>
-          <button onclick="setAssetFilter('PDF')" class="asset-filter-btn" style="font-size:11px;padding:5px 12px;border-radius:20px;border:1px solid var(--border);background:var(--surface);color:var(--t3);cursor:pointer;font-weight:700;font-family:Montserrat,sans-serif">PDF</button>
-        </div>
-        <div style="margin-left:auto;font-size:11px;color:var(--t3)" id="assetStorageInfo"></div>
-      </div>
-
-      <!-- 드래그앤드롭 업로드 존 -->
-      <div id="assetDropZone" style="border:2px dashed var(--border);border-radius:12px;padding:28px;text-align:center;margin-bottom:16px;cursor:pointer;transition:all .2s;background:var(--surface2)"
-        ondragover="event.preventDefault();this.style.borderColor='var(--blue)';this.style.background='rgba(0,122,255,0.04)'"
-        ondragleave="this.style.borderColor='var(--border)';this.style.background='var(--surface2)'"
-        ondrop="handleAssetDrop(event)"
-        onclick="document.getElementById('assetFileInput').click()">
-        <svg style="width:32px;height:32px;stroke:var(--t3);fill:none;stroke-width:1.5;margin-bottom:8px" viewBox="0 0 24 24"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>
-        <p style="font-size:13px;color:var(--t2);margin-bottom:3px">이미지 / PDF 파일을 드래그하거나 클릭해서 업로드</p>
-        <span style="font-size:11px;color:var(--t3)">JPG, PNG, GIF, PDF 지원 · 파일당 최대 2MB</span>
-      </div>
-
-      <!-- 에셋 그리드 -->
-      <div class="asset-grid" id="assetGrid"></div>
-
-      <!-- 빈 상태 -->
-      <div id="assetEmpty" style="display:none;padding:48px;text-align:center;color:var(--t3)">
-        <svg style="width:40px;height:40px;stroke:var(--t3);fill:none;stroke-width:1.5;margin-bottom:12px" viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
-        <div style="font-size:14px;font-weight:600;color:var(--t2);margin-bottom:6px">업로드된 파일이 없습니다</div>
-        <div style="font-size:12px">위 버튼이나 드래그앤드롭으로 파일을 올려주세요</div>
-      </div>
-    </div>
-
     <!-- ═══ UPLOAD PAGE ═══ -->
     <div class="page" id="page-upload">
       <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:4px;flex-wrap:wrap;gap:10px">
@@ -1158,11 +1107,10 @@ function showPage(id, el){
   document.getElementById('page-'+id).classList.add('active');
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   if(el) el.classList.add('active');
-  const titles = {home:'종합 대시보드',sales:'이커머스 매출 관리',ads:'광고 성과 대시보드',b2b:'B2B / 신규 매출',cx:'CX / VOC 관리',inventory:'재고 관리',assets:'디자인 에셋 라이브러리',upload:'데이터 업로드 센터'};
+  const titles = {home:'종합 대시보드',sales:'이커머스 매출 관리',ads:'광고 성과 대시보드',b2b:'B2B / 신규 매출',cx:'CX / VOC 관리',inventory:'재고 관리',upload:'데이터 업로드 센터'};
   document.getElementById('pageTitle').textContent = titles[id] || '';
   if(id==='ads') setTimeout(()=>{drawAdsCharts();},50);
   if(id==='cx') setTimeout(()=>{renderCXPage();},50);
-  if(id==='assets') setTimeout(()=>{renderAssets();},50);
   if(id==='upload') setTimeout(()=>{renderDataStatus();},50);
   if(id==='inventory' && invRawData.length===0) setTimeout(()=>{loadInventoryFromSheet();},100);
 }
@@ -4038,8 +3986,7 @@ function processAssetFiles(files) {
       processed++;
       if(processed === files.length) {
         saveAssets();
-        renderAssets();
-        showToast(`✅ ${processed}개 파일 업로드 완료`);
+              showToast(`✅ ${processed}개 파일 업로드 완료`);
       }
     };
     reader.readAsDataURL(file);
@@ -4049,7 +3996,6 @@ function deleteAsset(id) {
   if(!confirm('이 파일을 삭제할까요?')) return;
   assetList = assetList.filter(a=>a.id!==id);
   saveAssets();
-  renderAssets();
   showToast('🗑 파일이 삭제됐습니다');
 }
 function downloadAsset(id) {
@@ -4067,7 +4013,6 @@ function setAssetFilter(type) {
     btn.style.background = isActive?'var(--navy)':'var(--surface)';
     btn.style.color = isActive?'#fff':'var(--t3)';
   });
-  renderAssets();
 }
 function renderAssets() {
   loadAssets();
@@ -4302,36 +4247,61 @@ function filterByThisWeek(rows, dateColName) {
 // ── 매출 테이블 검색 필터 ──
 function filterSalesTable() {
   const keyword = (document.getElementById('salesSearch')?.value || '').toLowerCase().trim();
-  const rows = document.querySelectorAll('#salesBody tr');
+  const allRows = document.querySelectorAll('#salesBody tr');
   let visible = 0, total = 0;
+  let sumQty = 0, sumRev = 0, sumMargin = 0;
 
-  rows.forEach(row => {
-    // 합계 행은 항상 표시
-    if(row.querySelector('[style*="navy"]') || row.style.background?.includes('surface2')) {
-      return;
+  // 합계 행 찾기 (마지막 행)
+  let totalRow = null;
+  allRows.forEach(row => {
+    if(row.querySelector('.td-name span[style*="navy"]') ||
+       (row.style.cssText && row.style.cssText.includes('surface2'))) {
+      totalRow = row;
     }
+  });
+
+  allRows.forEach(row => {
+    if(row === totalRow) return; // 합계 행 건너뜀
     total++;
     const name = (row.cells[0]?.textContent || '').toLowerCase();
     const opt  = (row.cells[1]?.textContent || '').toLowerCase();
     const sku  = (row.cells[2]?.textContent || '').toLowerCase();
-    if(!keyword || name.includes(keyword) || opt.includes(keyword) || sku.includes(keyword)) {
-      row.style.display = '';
+    const match = !keyword || name.includes(keyword) || opt.includes(keyword) || sku.includes(keyword);
+    row.style.display = match ? '' : 'none';
+    if(match) {
       visible++;
-    } else {
-      row.style.display = 'none';
+      // 수치 집계 (날짜 컬럼 있어서 인덱스: 품목명0, 옵션1, SKU2, 날짜3, 수량4, 원가5, 매출6, 수익7)
+      const qtyText  = (row.cells[4]?.textContent || '0').replace(/[^0-9]/g,'');
+      const revText  = (row.cells[6]?.textContent || '0').replace(/[^0-9]/g,'');
+      const marText  = (row.cells[7]?.textContent || '0').replace(/[^0-9]/g,'');
+      sumQty    += parseInt(qtyText)  || 0;
+      sumRev    += parseInt(revText)  || 0;
+      sumMargin += parseInt(marText)  || 0;
     }
   });
 
-  // 검색 결과 카운트
+  // 합계 행 업데이트
+  if(totalRow) {
+    const marginRate = sumRev > 0 ? ((sumMargin/sumRev)*100).toFixed(1) : 0;
+    const skuLabel = keyword ? `${visible}개 SKU (검색결과)` : `${visible}개 SKU`;
+    // 품목명 셀
+    const nameCell = totalRow.cells[0];
+    if(nameCell) nameCell.innerHTML = `<span style="font-family:Montserrat,sans-serif;font-size:11px;background:var(--navy);color:#fff;padding:2px 8px;border-radius:4px;margin-right:6px">합계</span>${skuLabel}`;
+    // 수량 셀 (인덱스 4)
+    if(totalRow.cells[4]) totalRow.cells[4].textContent = sumQty.toLocaleString();
+    // 매출 셀 (인덱스 6)
+    if(totalRow.cells[6]) totalRow.cells[6].textContent = '₩' + sumRev.toLocaleString() + '원';
+    // 수익 셀 (인덱스 7)
+    if(totalRow.cells[7]) totalRow.cells[7].innerHTML = '₩' + sumMargin.toLocaleString() + '원' +
+      `<span style="font-size:10px;color:var(--t3);font-weight:400;margin-left:4px">(${marginRate}%)</span>`;
+  }
+
+  // 검색 카운트 표시
   const countEl = document.getElementById('salesSearchCount');
   const clearBtn = document.getElementById('salesSearchClear');
   if(countEl) {
-    if(keyword) {
-      countEl.textContent = `${visible}/${total}개 표시 중`;
-      countEl.style.color = visible===0?'var(--red)':'var(--t3)';
-    } else {
-      countEl.textContent = '';
-    }
+    countEl.textContent = keyword ? `${visible}/${total}개 표시 중` : '';
+    countEl.style.color = (keyword && visible===0) ? 'var(--red)' : 'var(--t3)';
   }
   if(clearBtn) clearBtn.style.display = keyword ? 'block' : 'none';
 }
@@ -4402,7 +4372,6 @@ window.addEventListener('DOMContentLoaded', ()=>{
   buildStockTable();
   buildAdsTable();
   buildB2B();
-  renderAssets();
   renderCXPage();
   renderDataStatus();
 
