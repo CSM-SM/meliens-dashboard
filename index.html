@@ -1034,7 +1034,8 @@ tbody tr:hover td{background:var(--surface2)}
             <div style="font-size:11px;color:rgba(255,255,255,.75);line-height:2">
               <span style="color:#FFD080;font-weight:700">쿠팡</span>_정산내역_W50.xlsx<br>
               <span style="color:#FFD080;font-weight:700">스마트스토어</span>_매출_W50.xlsx<br>
-              <span style="color:#FFD080;font-weight:700">자사몰</span>_주문내역_W50.xlsx
+              <span style="color:#FFD080;font-weight:700">meliens</span>_20260522_952_6198.csv<br>
+              <span style="font-size:10px;color:rgba(255,255,255,.4)">↑ 카페24 자사몰 다운로드 파일 그대로 사용</span>
             </div>
           </div>
           <!-- 외부 채널 -->
@@ -1060,9 +1061,18 @@ tbody tr:hover td{background:var(--surface2)}
         <div style="background:rgba(255,255,255,.05);border-radius:8px;padding:10px 14px">
           <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,.4);font-family:Montserrat,sans-serif;letter-spacing:1px;margin-bottom:6px">인식 가능한 파일명 키워드</div>
           <div style="font-size:11px;color:rgba(255,255,255,.6);line-height:1.8">
-            쿠팡 · 스마트스토어 · smartstore · naver · 자사몰 · mall · shop · 지그재그 · zigzag · 무신사 · musinsa · 오늘의집 · 29CM · SSG · G마켓 · gmarket · 11번가 · 11st · W컨셉 · wconcept · 마켓컬리 · kurly · 톡스토어 · 카카오 · kakao · 메타 · meta · facebook · instagram · 네이버 · 구글 · google · 카카오모먼트
+            쿠팡 · 스마트스토어 · smartstore · naver · <strong style="color:#FFD080">meliens (카페24 자사몰)</strong> · 자사몰 · mall · shop · 지그재그 · zigzag · 무신사 · musinsa · 오늘의집 · 29CM · SSG · G마켓 · gmarket · 11번가 · 11st · W컨셉 · wconcept · 마켓컬리 · kurly · 톡스토어 · 카카오 · kakao · 메타 · meta · facebook · instagram · 네이버 · 구글 · google · 카카오모먼트
           </div>
         </div>
+      </div>
+
+      <!-- 현재 저장된 데이터 현황 -->
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-header">
+          <div class="card-title">💾 현재 저장된 데이터 현황</div>
+          <div style="font-size:11px;color:var(--t3)">잘못 업로드한 경우 이전으로 되돌리거나 삭제할 수 있습니다</div>
+        </div>
+        <div id="dataStatusWrap"></div>
       </div>
 
       <div class="grid-2" style="margin-bottom:20px">
@@ -1153,6 +1163,7 @@ function showPage(id, el){
   if(id==='ads') setTimeout(()=>{drawAdsCharts();},50);
   if(id==='cx') setTimeout(()=>{renderCXPage();},50);
   if(id==='assets') setTimeout(()=>{renderAssets();},50);
+  if(id==='upload') setTimeout(()=>{renderDataStatus();},50);
   if(id==='inventory' && invRawData.length===0) setTimeout(()=>{loadInventoryFromSheet();},100);
 }
 
@@ -1905,6 +1916,7 @@ function detectChannel(filename, rows, colMap) {
   if (fn.includes('ssg')) return 'SSG';
   if (fn.includes('wconcept') || fn.includes('w컨셉')) return 'W컨셉';
   if (fn.includes('kurly') || fn.includes('컬리')) return '마켓컬리';
+  if (/^meliens_\d{8}_\d/i.test(fn) || fn.includes('meliens')) return '자사몰';
   if (fn.includes('자사몰') || fn.includes('mall') || fn.includes('shop')) return '자사몰';
   // 데이터에서 채널 컬럼 있으면 첫 번째 값 사용
   if (colMap.channel && rows[0]) return rows[0][colMap.channel] || '외부채널';
@@ -1912,7 +1924,59 @@ function detectChannel(filename, rows, colMap) {
 }
 
 // ── 매출 엑셀 파싱 → 표준 데이터 변환 ──
+// ── 카페24 자사몰 전용 파서 ──
+function parseCafe24Excel(json, filename) {
+  const channel = '자사몰';
+  const result = [];
+
+  // 상품명별로 집계 (주문 단위 → SKU 단위)
+  const skuMap = {};
+  json.forEach(row => {
+    const name = (row['주문상품명'] || row['주문상품명(옵션포함)'] || '').trim();
+    if(!name) return;
+
+    // 옵션 파싱 (괄호 안 내용)
+    const optMatch = (row['주문상품명(옵션포함)'] || '').match(/\(([^)]+)\)$/);
+    const opt = optMatch ? optMatch[1].split(',')[0].trim() : '';
+
+    const qty = parseInt(row['수량']) || 1;
+    const price = parseFloat((row['판매가'] || '0').toString().replace(/,/g,'')) || 0;
+    const totalPaid = parseFloat((row['총 결제금액'] || '0').toString().replace(/,/g,'')) || 0;
+
+    // 결제금액 0인 경우 (무료배송쿠폰 등) → 판매가 기준
+    const rowRev = totalPaid > 0 ? price * qty : price * qty;
+
+    const key = name + '|' + opt;
+    if(!skuMap[key]) {
+      skuMap[key] = { name, opt, qty:0, rev:0, orderCount:0 };
+    }
+    skuMap[key].qty += qty;
+    skuMap[key].rev += rowRev;
+    skuMap[key].orderCount += 1;
+  });
+
+  Object.entries(skuMap).forEach(([key, item]) => {
+    result.push({
+      name:    item.name,
+      opt:     item.opt,
+      sku:     '',
+      channel: channel,
+      qty:     item.qty,
+      cost:    0,
+      rev:     item.rev,
+      margin:  0,
+      stock:   0,
+    });
+  });
+
+  return result;
+}
+
 function parseSalesExcel(json, headers, filename) {
+  // ── 카페24 자사몰 파일 감지 ──
+  if(/^meliens_\d{8}_/i.test(filename) || (headers.includes('주문번호') && headers.includes('총 결제금액'))) {
+    return parseCafe24Excel(json, filename);
+  }
   const colMap = detectColumns(headers);
   const channel = detectChannel(filename, json, colMap);
 
@@ -1964,12 +2028,17 @@ let uploadedAdsData   = [];
 
 // ── localStorage 데이터 영속성 ──
 const STORAGE_KEYS = {
-  sales: 'meliens_sales_data',
-  ads:   'meliens_ads_data',
-  inv:   'meliens_inv_data',
-  invWeeks: 'meliens_inv_weeks',
-  invHeaders: 'meliens_inv_headers',
-  uploadHistory: 'meliens_upload_history',
+  sales:        'meliens_sales_data',
+  ads:          'meliens_ads_data',
+  inv:          'meliens_inv_data',
+  invWeeks:     'meliens_inv_weeks',
+  invHeaders:   'meliens_inv_headers',
+  uploadHistory:'meliens_upload_history',
+  // 백업 (이전 버전)
+  salesBackup:  'meliens_sales_backup',
+  adsBackup:    'meliens_ads_backup',
+  salesMeta:    'meliens_sales_meta',   // 업로드 파일 메타정보
+  adsMeta:      'meliens_ads_meta',
 };
 const MAX_STORAGE_MB = 4; // localStorage 최대 4MB 사용
 
@@ -2294,13 +2363,129 @@ function showMappingPreview(filename, colMap, sampleRows, type, allRows, headers
 let pendingUploadData = { sales: null, ads: null };
 
 function confirmUpload(type) {
+  const now = new Date().toLocaleString('ko-KR',{year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});
   if (type === 'sales' && pendingUploadData.sales) {
+    // 이전 데이터 백업
+    if(uploadedSalesData.length > 0) {
+      saveToStorage(STORAGE_KEYS.salesBackup, uploadedSalesData);
+    }
     uploadedSalesData = pendingUploadData.sales;
+    saveToStorage(STORAGE_KEYS.sales, uploadedSalesData);
+    saveToStorage(STORAGE_KEYS.salesMeta, {
+      filename: pendingUploadData.salesFilename || '알 수 없음',
+      count: uploadedSalesData.length,
+      uploadedAt: now,
+      totalRev: uploadedSalesData.reduce((s,r)=>s+r.rev,0),
+    });
   }
   if (type === 'ads' && pendingUploadData.ads) {
+    if(uploadedAdsData.length > 0) {
+      saveToStorage(STORAGE_KEYS.adsBackup, uploadedAdsData);
+    }
     uploadedAdsData = pendingUploadData.ads;
+    saveToStorage(STORAGE_KEYS.ads, uploadedAdsData);
+    saveToStorage(STORAGE_KEYS.adsMeta, {
+      filename: pendingUploadData.adsFilename || '알 수 없음',
+      count: uploadedAdsData.length,
+      uploadedAt: now,
+    });
   }
   applyDataToDashboard();
+  saveUploadHistoryToStorage();
+  renderDataStatus(); // 업로드 현황 업데이트
+}
+
+// 이전 데이터로 되돌리기
+function undoUpload(type) {
+  if(!confirm('이전 데이터로 되돌릴까요? 현재 데이터는 삭제됩니다.')) return;
+  if(type === 'sales') {
+    const backup = loadFromStorage(STORAGE_KEYS.salesBackup);
+    if(!backup || backup.length === 0) { showToast('⚠ 되돌릴 이전 데이터가 없습니다'); return; }
+    uploadedSalesData = backup;
+    saveToStorage(STORAGE_KEYS.sales, uploadedSalesData);
+    localStorage.removeItem(STORAGE_KEYS.salesBackup);
+    localStorage.removeItem(STORAGE_KEYS.salesMeta);
+    applyDataToDashboard();
+    showToast('↩ 이전 매출 데이터로 되돌렸습니다');
+  } else if(type === 'ads') {
+    const backup = loadFromStorage(STORAGE_KEYS.adsBackup);
+    if(!backup || backup.length === 0) { showToast('⚠ 되돌릴 이전 데이터가 없습니다'); return; }
+    uploadedAdsData = backup;
+    saveToStorage(STORAGE_KEYS.ads, uploadedAdsData);
+    localStorage.removeItem(STORAGE_KEYS.adsBackup);
+    localStorage.removeItem(STORAGE_KEYS.adsMeta);
+    applyDataToDashboard();
+    showToast('↩ 이전 광고 데이터로 되돌렸습니다');
+  }
+  renderDataStatus();
+}
+
+// 특정 타입 데이터만 삭제
+function deleteData(type) {
+  const labels = {sales:'매출', ads:'광고', inv:'재고'};
+  if(!confirm(`${labels[type]||type} 데이터를 삭제할까요?`)) return;
+  if(type === 'sales') {
+    uploadedSalesData = [];
+    localStorage.removeItem(STORAGE_KEYS.sales);
+    localStorage.removeItem(STORAGE_KEYS.salesBackup);
+    localStorage.removeItem(STORAGE_KEYS.salesMeta);
+    applyDataToDashboard();
+  } else if(type === 'ads') {
+    uploadedAdsData = [];
+    localStorage.removeItem(STORAGE_KEYS.ads);
+    localStorage.removeItem(STORAGE_KEYS.adsBackup);
+    localStorage.removeItem(STORAGE_KEYS.adsMeta);
+    applyDataToDashboard();
+  } else if(type === 'inv') {
+    invRawData = []; invWeeks = []; invHeaders = {};
+    [STORAGE_KEYS.inv, STORAGE_KEYS.invWeeks, STORAGE_KEYS.invHeaders].forEach(k=>localStorage.removeItem(k));
+  }
+  renderDataStatus();
+  showToast(`🗑 ${labels[type]||type} 데이터가 삭제됐습니다`);
+}
+
+// 현재 저장된 데이터 현황 렌더링
+function renderDataStatus() {
+  const salesMeta = loadFromStorage(STORAGE_KEYS.salesMeta);
+  const adsMeta   = loadFromStorage(STORAGE_KEYS.adsMeta);
+  const salesBackup = loadFromStorage(STORAGE_KEYS.salesBackup);
+  const adsBackup   = loadFromStorage(STORAGE_KEYS.adsBackup);
+  const el = document.getElementById('dataStatusWrap');
+  if(!el) return;
+
+  const makeCard = (label, data, meta, backupExists, type, color) => {
+    if(!data || data.length === 0) return `
+      <div style="padding:14px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;display:flex;align-items:center;gap:12px">
+        <div style="width:8px;height:8px;border-radius:50%;background:var(--t3);flex-shrink:0"></div>
+        <div style="flex:1">
+          <div style="font-size:12px;font-weight:700;color:var(--t2)">${label}</div>
+          <div style="font-size:11px;color:var(--t3)">데이터 없음</div>
+        </div>
+      </div>`;
+    return `
+      <div style="padding:14px;background:var(--surface2);border:1px solid var(--border);border-radius:10px">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+          <div style="width:8px;height:8px;border-radius:50%;background:${color};flex-shrink:0"></div>
+          <div style="flex:1">
+            <div style="font-size:12px;font-weight:700;color:var(--t1)">${label}</div>
+            <div style="font-size:11px;color:var(--t3)">${meta?.filename||''} · ${data.length}개 · ${meta?.uploadedAt||''}</div>
+          </div>
+        </div>
+        ${meta?.totalRev ? `<div style="font-size:12px;color:var(--blue);font-weight:700;margin-bottom:8px;font-family:Montserrat,sans-serif">₩${Math.round(meta.totalRev).toLocaleString()}원</div>` : ''}
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          ${backupExists ? `<button onclick="undoUpload('${type}')" style="font-size:11px;padding:4px 10px;border:1px solid var(--amber);border-radius:5px;background:rgba(245,166,35,0.08);color:var(--amber);cursor:pointer;font-weight:600">↩ 이전으로</button>` : ''}
+          <button onclick="deleteData('${type}')" style="font-size:11px;padding:4px 10px;border:1px solid rgba(255,75,75,0.3);border-radius:5px;background:rgba(255,75,75,0.05);color:var(--red);cursor:pointer;font-weight:600">🗑 삭제</button>
+        </div>
+      </div>`;
+  };
+
+  const invMeta = invRawData.length > 0 ? {filename:'재고현황 파일', count:invRawData.length} : null;
+  el.innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
+      ${makeCard('매출 데이터', uploadedSalesData, salesMeta, !!salesBackup, 'sales', 'var(--blue)')}
+      ${makeCard('광고 데이터', uploadedAdsData, adsMeta, !!adsBackup, 'ads', 'var(--purple)')}
+      ${makeCard('재고 데이터', invRawData, invMeta, false, 'inv', 'var(--teal)')}
+    </div>`;
 }
 
 // ── FILE UPLOAD ──
@@ -2322,11 +2507,13 @@ function handleFileUpload(event, type) {
         const colMap = detectColumns(headers);
         const parsed = parseSalesExcel(json, headers, file.name);
         pendingUploadData.sales = parsed;
+        pendingUploadData.salesFilename = file.name;
         showMappingPreview(file.name, colMap, json.slice(0,3), type, json, headers);
       } else if (type === 'ads') {
         const colMap = detectColumns(headers);
         const parsed = parseAdsExcel(json, headers, file.name);
         pendingUploadData.ads = parsed;
+        pendingUploadData.adsFilename = file.name;
         showMappingPreview(file.name, colMap, json.slice(0,3), type, json, headers);
       }
     } catch(err) {
@@ -3788,6 +3975,7 @@ window.addEventListener('DOMContentLoaded', ()=>{
   buildB2B();
   renderAssets();
   renderCXPage();
+  renderDataStatus();
 
   // 저장된 데이터가 있으면 대시보드 즉시 업데이트
   if(uploadedSalesData.length > 0) {
