@@ -2493,14 +2493,20 @@ function loadFromStorage(key) {
 function clearAllData() {
   if(!confirm('저장된 모든 데이터를 삭제할까요?')) return;
   Object.values(STORAGE_KEYS).forEach(k => localStorage.removeItem(k));
+  // SD 페이지 키도 모두 삭제
+  [SD_STORAGE_KEY, SD_META_KEY, 'meliens_sd_files'].forEach(k => localStorage.removeItem(k));
   uploadedSalesData = [];
-  uploadedAdsData = [];
+  uploadedAdsData   = [];
   invRawData = [];
-  invWeeks = [];
+  invWeeks   = [];
   invHeaders = {};
+  sdRawRows      = [];
+  sdFileRegistry = [];
   applyDataToDashboard();
   buildSalesTable();
-  showToast('🗑 저장된 데이터를 모두 삭제했습니다');
+  renderSDTable && renderSDTable();
+  renderFileRegistry && renderFileRegistry();
+  showToast('🗑 저장된 모든 데이터를 삭제했습니다');
 }
 
 function applyDataToDashboard() {
@@ -5234,8 +5240,16 @@ function deleteSDFile(filename) {
   // UI 업데이트
   renderFileRegistry();
   updateSDFilters();
-  renderSDTable();
-  syncRevenueFromSD();
+  if(sdRawRows.length > 0) {
+    renderSDTable();
+    syncRevenueFromSD();
+  } else {
+    // 모두 삭제됐으면 빈 상태로 초기화
+    document.getElementById('sdEmptyMsg') && (document.getElementById('sdEmptyMsg').style.display='');
+    document.getElementById('sdTableWrap') && (document.getElementById('sdTableWrap').style.display='none');
+    ['sd-total-qty','sd-total-sub','sd-issue-info'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=id==='sd-total-qty'?'--':'데이터 없음';});
+    ['sd-kpi-coupang','sd-kpi-self','sd-kpi-ss','sd-kpi-ext'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML='--<span class="kpi-unit">개</span>';});
+  }
   showToast(`🗑 "${filename}" 삭제 완료 (${removed}행 제거)`);
 }
 
@@ -5277,8 +5291,9 @@ function renderSDTable() {
     skuMap[r.sku].dates[r.date] += r.qty;
   });
 
-  // 날짜 목록 (최근 7일 우선)
-  const allDates = [...new Set(rows.map(r=>r.date))].sort().reverse().slice(0,7).reverse();
+  // 날짜 목록 (유효한 날짜만, 최근 7일)
+  const validDateRe = /^20[2-9]\d-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\d|3[01])$/;
+  const allDates = [...new Set(rows.map(r=>r.date).filter(d=>validDateRe.test(d)))].sort().reverse().slice(0,7).reverse();
   // 채널 목록 - 정해진 순서로 정렬
   const CH_ORDER = ['자사몰','스마트스토어','쿠팡','전체(판매수량)'];
   const rawChannels = [...new Set(rows.map(r=>r.channel))];
@@ -5333,8 +5348,9 @@ function renderSDTable() {
   const extQty     = totalQty - coupangQty - selfQty - ssQty;
 
   // 날짜 기준 텍스트 (파일명 숫자 제외, 날짜만)
+  // dateLabel (이미 validDateRe로 필터된 allDates 기준)
   const dateLabel = allDates.length > 0
-    ? (allDates[allDates.length-1] + (allDates.length>1 ? ` 외 ${allDates.length-1}일` : '') + ' 기준')
+    ? (allDates[0] + (allDates.length>1 ? ` ~ ${allDates[allDates.length-1]}` : ''))
     : '데이터 없음';
 
   upd('sd-total-qty',  totalQty.toLocaleString());
@@ -5634,7 +5650,12 @@ function initSalesDataPage() {
 
   const saved = loadFromStorage(SD_STORAGE_KEY);
   if(saved && saved.length > 0) {
-    sdRawRows = saved.map(r => ({...r, channel: normalizeChannel(r.channel)}));
+    const validDate = /^20[2-9]\d-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\d|3[01])$/;
+    sdRawRows = saved
+      .filter(r => validDate.test(r.date))  // 나쁜 날짜 완전 제거
+      .map(r => ({...r, channel: normalizeChannel(r.channel)}));
+    // 정제된 데이터 다시 저장 (나쁜 날짜 영구 제거)
+    try { saveToStorage(SD_STORAGE_KEY, sdRawRows); } catch(e) {}
     updateSDFilters();
     renderSDTable();
     renderFileRegistry();
