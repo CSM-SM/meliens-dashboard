@@ -1136,24 +1136,43 @@ tbody tr:hover td{background:var(--surface2)}
 
       <!-- KPI 카드 4개 — 채널별 -->
       <div class="grid-4" style="margin-bottom:16px">
-        <div class="kpi-card"><div class="kpi-accent" style="background:#E8140C"></div>
-          <div class="kpi-label">🛒 쿠팡</div>
-          <div class="kpi-value" id="sd-kpi-coupang">--<span class="kpi-unit">개</span></div>
-          <div class="kpi-change neutral" id="sd-kpi-coupang-sub">데이터 없음</div>
-        </div>
-        <div class="kpi-card"><div class="kpi-accent" style="background:var(--teal)"></div>
-          <div class="kpi-label">🏠 자사몰</div>
+        <!-- 자사몰 -->
+        <div class="kpi-card" style="cursor:pointer" onclick="document.getElementById('sdChannelSelect').value='자사몰';renderSDTable()" onmouseenter="this.style.boxShadow='0 4px 20px rgba(17,202,160,0.2)'" onmouseleave="this.style.boxShadow=''">
+          <div class="kpi-accent" style="background:var(--teal)"></div>
+          <div class="kpi-label" style="display:flex;align-items:center;gap:5px">
+            <span style="width:7px;height:7px;border-radius:50%;background:var(--teal);display:inline-block"></span>
+            자사몰 <span style="font-size:9px;color:var(--t3);margin-left:auto">클릭 필터 →</span>
+          </div>
           <div class="kpi-value" id="sd-kpi-self">--<span class="kpi-unit">개</span></div>
           <div class="kpi-change neutral" id="sd-kpi-self-sub">데이터 없음</div>
         </div>
-        <div class="kpi-card"><div class="kpi-accent" style="background:#03C75A"></div>
-          <div class="kpi-label">🟢 스마트스토어</div>
+        <!-- 스마트스토어 -->
+        <div class="kpi-card" style="cursor:pointer" onclick="document.getElementById('sdChannelSelect').value='스마트스토어';renderSDTable()" onmouseenter="this.style.boxShadow='0 4px 20px rgba(3,199,90,0.2)'" onmouseleave="this.style.boxShadow=''">
+          <div class="kpi-accent" style="background:#03C75A"></div>
+          <div class="kpi-label" style="display:flex;align-items:center;gap:5px">
+            <span style="width:7px;height:7px;border-radius:50%;background:#03C75A;display:inline-block"></span>
+            스마트스토어 <span style="font-size:9px;color:var(--t3);margin-left:auto">클릭 필터 →</span>
+          </div>
           <div class="kpi-value" id="sd-kpi-ss">--<span class="kpi-unit">개</span></div>
           <div class="kpi-change neutral" id="sd-kpi-ss-sub">데이터 없음</div>
         </div>
-        <div class="kpi-card" style="cursor:pointer" onclick="setSDFilter('issue')" onmouseenter="this.style.boxShadow='0 4px 20px rgba(108,92,231,0.2)'" onmouseleave="this.style.boxShadow=''">
+        <!-- 쿠팡 -->
+        <div class="kpi-card" style="cursor:pointer" onclick="document.getElementById('sdChannelSelect').value='쿠팡';renderSDTable()" onmouseenter="this.style.boxShadow='0 4px 20px rgba(232,20,12,0.15)'" onmouseleave="this.style.boxShadow=''">
+          <div class="kpi-accent" style="background:#E8140C"></div>
+          <div class="kpi-label" style="display:flex;align-items:center;gap:5px">
+            <span style="width:7px;height:7px;border-radius:50%;background:#E8140C;display:inline-block"></span>
+            쿠팡 <span style="font-size:9px;color:var(--t3);margin-left:auto">클릭 필터 →</span>
+          </div>
+          <div class="kpi-value" id="sd-kpi-coupang">--<span class="kpi-unit">개</span></div>
+          <div class="kpi-change neutral" id="sd-kpi-coupang-sub">데이터 없음</div>
+        </div>
+        <!-- 외부채널 + 이슈 -->
+        <div class="kpi-card" style="cursor:pointer" onclick="setSDFilter(sdFilter==='issue'?'all':'issue')" onmouseenter="this.style.boxShadow='0 4px 20px rgba(108,92,231,0.2)'" onmouseleave="this.style.boxShadow=''">
           <div class="kpi-accent" style="background:var(--purple)"></div>
-          <div class="kpi-label">🌐 외부 채널 합계 <span style="font-size:9px;color:var(--purple)">▶ 이슈필터</span></div>
+          <div class="kpi-label" style="display:flex;align-items:center;gap:5px">
+            <span style="width:7px;height:7px;border-radius:50%;background:var(--purple);display:inline-block"></span>
+            외부채널 <span id="sd-issue-badge" style="font-size:9px;padding:1px 5px;border-radius:8px;background:rgba(255,75,75,0.1);color:var(--red);font-weight:700;margin-left:auto;display:none">이슈필터</span>
+          </div>
           <div class="kpi-value" id="sd-kpi-ext">--<span class="kpi-unit">개</span></div>
           <div class="kpi-change neutral" id="sd-kpi-ext-sub">데이터 없음</div>
         </div>
@@ -4664,11 +4683,11 @@ let sdSort      = 'desc';
 // 채널명 정규화 (어디서 왔든 통일)
 function normalizeChannel(ch) {
   if(!ch) return '기타';
-  const c = ch.toLowerCase().replace(/\s/g,'');
-  if(['카페24','cafe24','자체몰','멜리언스','meliens','자사몰'].some(k=>c.includes(k.toLowerCase().replace(/\s/g,'')))) return '자사몰';
-  if(['스마트스토어','smartstore','네이버쇼핑','naver'].some(k=>c.includes(k.toLowerCase()))) return '스마트스토어';
-  if(['쿠팡','coupang'].some(k=>c.includes(k))) return '쿠팡';
-  return ch.trim();
+  const s = String(ch).toLowerCase().replace(/\s/g,'');
+  if(s.includes('카페24')||s.includes('cafe24')||s.includes('자체몰')||s.includes('자사몰')||s.includes('멜리언스')||s.includes('meliens')) return '자사몰';
+  if(s.includes('스마트스토어')||s.includes('smartstore')||s.includes('네이버쇼핑')) return '스마트스토어';
+  if(s.includes('쿠팡')||s.includes('coupang')) return '쿠팡';
+  return String(ch).trim();
 } // 'desc'=합계 내림차순, 'asc'=합계 오름차순, 'name'=이름순
 
 // ── 파일 드롭 처리 ──
@@ -4685,12 +4704,18 @@ function handleSalesDataUpload(event, type) {
 }
 
 function processSalesDataFile(file, type) {
-  const statusEl = document.getElementById(type==='coupang'?'coupangFileStatus':'adminFileStatus');
+  const fn = file.name.toLowerCase();
+  // 파일 내용/이름으로 실제 타입 자동 감지 (드롭존과 무관)
+  // 쿠팡 파일: "일간", "종합", "성과", "지표" 키워드 or "coupang"
+  const isCoupangFile = fn.includes('일간') || fn.includes('성과_지표') || fn.includes('coupang') ||
+                        fn.includes('종합_성과') || fn.replace(/[+_\s]/g,'').includes('일간종합성과');
+  const autoType = isCoupangFile ? 'coupang' : type;
+
+  const statusEl = document.getElementById(autoType==='coupang'?'coupangFileStatus':'adminFileStatus');
   if(statusEl) statusEl.textContent = '⏳ 읽는 중...';
   showToast('📂 파일 읽는 중...');
 
   // 멜리언스 일일판매수량 XLSX 감지
-  const fn = file.name.toLowerCase();
   const isMeliensXLSX = fn.includes('일일판매수량') || fn.includes('온라인_플랫폼') || fn.includes('meliens_daily');
 
   const isHTML = fn.endsWith('.xls') || fn.endsWith('.html');
@@ -4710,7 +4735,7 @@ function processSalesDataFile(file, type) {
           headers.forEach((h,i)=>{ obj[h] = r[i]||''; });
           return obj;
         });
-        if(type==='coupang') parseCoupangRows(rows, file.name);
+        if(autoType==='coupang') parseCoupangRows(rows, file.name);
         else parseAdminRows(rows, file.name);
       } else if(isHTML) {
         // HTML XLS 파싱
@@ -4741,7 +4766,7 @@ function processSalesDataFile(file, type) {
         }
         const ws = wb.Sheets[wb.SheetNames[0]];
         rows = XLSX.utils.sheet_to_json(ws, {defval:''});
-        if(type==='coupang') parseCoupangRows(rows, file.name);
+        if(autoType==='coupang') parseCoupangRows(rows, file.name);
         else parseAdminRows(rows, file.name);
       }
     } catch(err) {
@@ -4856,10 +4881,15 @@ function parseCoupangRows(rows, filename) {
   const revKey  = findKey(['매출액','gmv','매출','revenue','판매금액']);
   const costKey = findKey(['매입원가','cogs','원가','cost']);
 
-  // 파일명에서 날짜 추출 (fallback)
+  // 파일명에서 날짜 추출 (fallback) - 20XXXXXX 또는 2자리연도 YYMMDD 지원
   const fnDate = (() => {
-    const m = filename.match(/(?<![0-9])(20\d{2})(\d{2})(\d{2})(?![0-9])/);
-    return m ? `${m[1]}-${m[2]}-${m[3]}` : new Date().toISOString().slice(0,10);
+    // 8자리: 20260528
+    const m8 = filename.match(/(?<![0-9])(20[2-9][0-9])([01][0-9])([0-3][0-9])(?![0-9])/);
+    if(m8) return `${m8[1]}-${m8[2]}-${m8[3]}`;
+    // 6자리: 260528 → 20260528
+    const m6 = filename.match(/(?<![0-9])([2-9][0-9])([01][0-9])([0-3][0-9])(?![0-9])/);
+    if(m6) return `20${m6[1]}-${m6[2]}-${m6[3]}`;
+    return new Date().toISOString().slice(0,10);
   })();
 
   const newRows = rows.map(r => {
@@ -4909,10 +4939,13 @@ function parseAdminRows(rows, filename) {
   const costKey = findKey(['원가금액','원가','cost','매입가','공급가금액']);
   const dateKey = findKey(['주문일','결제일','날짜','date','정산일']);
 
-  // 파일명에서 날짜 추출 (파일명 숫자 9자리 이상은 날짜 아님)
+  // 파일명에서 날짜 추출 - 20XXXXXX 또는 2자리연도 YYMMDD 지원
   const fnDate = (() => {
-    const m = filename.match(/(?<![0-9])(20\d{2})(\d{2})(\d{2})(?![0-9])/);
-    return m ? `${m[1]}-${m[2]}-${m[3]}` : new Date().toISOString().slice(0,10);
+    const m8 = filename.match(/(?<![0-9])(20[2-9][0-9])([01][0-9])([0-3][0-9])(?![0-9])/);
+    if(m8) return `${m8[1]}-${m8[2]}-${m8[3]}`;
+    const m6 = filename.match(/(?<![0-9])([2-9][0-9])([01][0-9])([0-3][0-9])(?![0-9])/);
+    if(m6) return `20${m6[1]}-${m6[2]}-${m6[3]}`;
+    return new Date().toISOString().slice(0,10);
   })();
 
   const SELF_MALL = ['카페24','cafe24','자체몰','멜리언스','meliens'];
@@ -5246,8 +5279,13 @@ function renderSDTable() {
 
   // 날짜 목록 (최근 7일 우선)
   const allDates = [...new Set(rows.map(r=>r.date))].sort().reverse().slice(0,7).reverse();
-  // 채널 목록
-  const allChannels = [...new Set(rows.map(r=>r.channel))].sort();
+  // 채널 목록 - 정해진 순서로 정렬
+  const CH_ORDER = ['자사몰','스마트스토어','쿠팡','전체(판매수량)'];
+  const rawChannels = [...new Set(rows.map(r=>r.channel))];
+  const allChannels = [
+    ...CH_ORDER.filter(c => rawChannels.includes(c)),
+    ...rawChannels.filter(c => !CH_ORDER.includes(c)).sort()
+  ];
 
   // 이슈 판단 (전날 대비 50% 이상 감소 or 판매 0)
   const allSkus = Object.values(skuMap);
@@ -5280,9 +5318,9 @@ function renderSDTable() {
   const upd = (id,html) => { const el=document.getElementById(id); if(el) el.innerHTML=html; };
   // 채널별 집계
   const CH_GROUPS = {
+    self:    ['자사몰'],
+    ss:      ['스마트스토어'],
     coupang: ['쿠팡'],
-    self:    ['자사몰', 'meliens', '카페24', '카페 24', 'cafe24', '자체몰'],
-    ss:      ['스마트스토어', '네이버', 'smartstore', 'NAVER'],
   };
   function getChQty(group) {
     return allSkus.reduce((s, sk) => s + Object.entries(sk.channels)
@@ -5300,29 +5338,73 @@ function renderSDTable() {
     : '데이터 없음';
 
   upd('sd-total-qty',  totalQty.toLocaleString());
-  upd('sd-total-sub',  dateLabel);
-  upd('sd-issue-info', `⚠ 이슈 SKU ${issueCnt}개 · 전체 ${allSkus.length}개`);
+  upd('sd-total-sub',  allDates.length>0 ? `${allDates[0].slice(5)} ~ ${allDates[allDates.length-1].slice(5)} (${allDates.length}일)` : '데이터 없음');
+  upd('sd-issue-info', issueCnt>0 ? `⚠ 이슈 ${issueCnt}개 / ${allSkus.length}개 SKU` : `${allSkus.length}개 SKU`);
 
   // 채널별 KPI
   const fmtKpi = (v) => `${v.toLocaleString()}<span class="kpi-unit">개</span>`;
-  upd('sd-kpi-coupang',     fmtKpi(coupangQty));
-  upd('sd-kpi-coupang-sub', coupangQty>0 ? `전체의 ${Math.round(coupangQty/totalQty*100)}%` : '데이터 없음');
+  // 매출 데이터 (sdRawRows 기반)
+  const getRevByGroup = (grp) => allSkus.reduce((s,sk) => s + Object.entries(sk.channels)
+    .filter(([ch]) => grp.some(g=>ch===g)).reduce((ss,[,v])=>ss+v,0) * 0, 0); // 수량 기준
+  const pct = (v) => totalQty>0 ? Math.round(v/totalQty*100) : 0;
+  const fmtSub = (qty, grpLabel) => qty>0 ? `${pct(qty)}% · ${qty.toLocaleString()}개` : '데이터 없음';
+
   upd('sd-kpi-self',        fmtKpi(selfQty));
-  upd('sd-kpi-self-sub',    selfQty>0 ? `전체의 ${Math.round(selfQty/totalQty*100)}%` : '데이터 없음');
+  upd('sd-kpi-self-sub',    fmtSub(selfQty,'자사몰'));
   upd('sd-kpi-ss',          fmtKpi(ssQty));
-  upd('sd-kpi-ss-sub',      ssQty>0 ? `전체의 ${Math.round(ssQty/totalQty*100)}%` : '데이터 없음');
+  upd('sd-kpi-ss-sub',      fmtSub(ssQty,'스마트스토어'));
+  upd('sd-kpi-coupang',     fmtKpi(coupangQty));
+  upd('sd-kpi-coupang-sub', fmtSub(coupangQty,'쿠팡'));
   upd('sd-kpi-ext',         fmtKpi(Math.max(0,extQty)));
-  upd('sd-kpi-ext-sub',     extQty>0 ? allChannels.filter(ch=>!['쿠팡','자사몰','스마트스토어','네이버'].some(m=>ch.includes(m))).join(' · ').slice(0,25) : '데이터 없음');
+  upd('sd-kpi-ext-sub',     extQty>0 ? `${pct(extQty)}% · ${extQty.toLocaleString()}개` : '데이터 없음');
+
+  // 이슈 뱃지 토글
+  const issueBadgeEl = document.getElementById('sd-issue-badge');
+  if(issueBadgeEl) issueBadgeEl.style.display = issueCnt>0?'inline':'none';
+  if(issueBadgeEl) issueBadgeEl.textContent = `⚠ ${issueCnt}이슈`;
 
   // 테이블 헤더 (SKU | 채널들 | 날짜들 | 합계)
   const thead = document.getElementById('sdThead');
   const sortIcon = sdSort==='desc'?' ↓':sdSort==='asc'?' ↑':'';
+  const DOW = ['일','월','화','수','목','금','토'];
+  const chColor = ch => {
+    if(ch==='자사몰') return 'color:var(--teal)';
+    if(ch==='스마트스토어') return 'color:#03C75A';
+    if(ch==='쿠팡') return 'color:#E8140C';
+    if(ch==='전체(판매수량)') return 'color:var(--blue)';
+    return 'color:var(--t2)';
+  };
+  const chShort = ch => {
+    if(ch==='스마트스토어') return 'SS';
+    if(ch==='쿠팡로켓배송(송장)') return '쿠팡🚀';
+    if(ch==='전체(판매수량)') return '판매수량';
+    return ch;
+  };
   if(thead) thead.innerHTML = `<tr>
-    <th onclick="setSDSort(sdSort==='name'?'desc':'name')" style="min-width:160px;max-width:320px;position:sticky;left:0;background:var(--surface2);z-index:1;cursor:pointer;resize:horizontal;overflow:auto" title="품목명 가나다순 / 클릭으로 정렬">SKU / 품목명${sdSort==='name'?' ↑↓':''}</th>
-    ${allChannels.map(ch=>`<th style="text-align:right;min-width:70px">${ch}</th>`).join('')}
-    ${allDates.map(d=>`<th style="text-align:right;min-width:65px;color:var(--blue)">${d.slice(5)}</th>`).join('')}
-    <th onclick="setSDSort(sdSort==='desc'?'asc':'desc')" style="text-align:right;min-width:70px;background:rgba(0,45,94,0.05);font-weight:800;cursor:pointer" title="합계 정렬">합계${sortIcon}</th>
-    <th style="min-width:50px">상태</th>
+    <th onclick="setSDSort(sdSort==='name'?'desc':'name')"
+        style="min-width:180px;position:sticky;left:0;background:var(--surface2);z-index:2;cursor:pointer;border-right:2px solid var(--border)"
+        title="클릭: 가나다 정렬">
+      <div style="display:flex;align-items:center;gap:4px">
+        <span>SKU / 품목명</span>
+        <span style="font-size:9px;color:var(--t3)">${sdSort==='name'?'↑↓':''}</span>
+      </div>
+    </th>
+    ${allChannels.map(ch=>`
+      <th style="text-align:right;min-width:64px;font-size:11px;padding:8px 6px;${chColor(ch)};font-weight:700">${chShort(ch)}</th>
+    `).join('')}
+    ${allDates.map(d=>{
+      const dt = new Date(d+'T00:00:00');
+      const dow = DOW[dt.getDay()];
+      const isWeekend = dt.getDay()===0||dt.getDay()===6;
+      return `<th style="text-align:right;min-width:52px;font-size:10px;padding:6px 4px;color:${isWeekend?'var(--red)':'var(--blue)'};font-weight:600">
+        <div>${d.slice(5)}</div>
+        <div style="font-size:9px;opacity:0.7">${dow}</div>
+      </th>`;
+    }).join('')}
+    <th onclick="setSDSort(sdSort==='desc'?'asc':'desc')"
+        style="text-align:right;min-width:64px;background:rgba(0,45,94,0.06);font-weight:800;cursor:pointer;border-left:1px solid var(--border)"
+        title="클릭: 합계 정렬">합계${sortIcon}</th>
+    <th style="min-width:44px;text-align:center;font-size:11px">상태</th>
   </tr>`;
 
   // 합계 행 먼저 계산
@@ -5336,25 +5418,32 @@ function renderSDTable() {
   if(filtered.length === 0) {
     tbody.innerHTML = `<tr><td colspan="${2+allChannels.length+allDates.length}" style="padding:24px;text-align:center;color:var(--t3)">검색 결과가 없습니다</td></tr>`;
   } else {
-    tbody.innerHTML = filtered.map(s => {
-      const issueBadge = s.isIssue
-        ? `<span style="font-size:10px;padding:2px 6px;border-radius:4px;background:rgba(255,75,75,0.1);color:var(--red);font-weight:700">⚠ 이슈</span>`
-        : `<span style="font-size:10px;padding:2px 6px;border-radius:4px;background:rgba(17,202,160,0.1);color:var(--teal);font-weight:700">정상</span>`;
-      return `<tr style="${s.isIssue?'background:rgba(255,75,75,0.03)':''}">
-        <td class="sd-sku-cell" style="position:sticky;left:0;background:${s.isIssue?'rgba(255,75,75,0.04)':'var(--surface)'};font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:160px;max-width:320px;cursor:default" title="${s.sku}">${s.sku}</td>
+    tbody.innerHTML = filtered.map((s,ri) => {
+      const isIssue = s.isIssue;
+      const rowBg = isIssue ? 'background:rgba(255,75,75,0.03)' : (ri%2===1 ? 'background:var(--surface2)' : '');
+      const skuBg = isIssue ? 'rgba(255,75,75,0.04)' : (ri%2===1 ? 'var(--surface2)' : 'var(--surface)');
+      const statusBadge = isIssue
+        ? `<span style="font-size:10px;padding:2px 5px;border-radius:4px;background:rgba(255,75,75,0.12);color:var(--red);font-weight:700;white-space:nowrap">⚠ 이슈</span>`
+        : `<span style="font-size:10px;padding:2px 5px;border-radius:4px;background:rgba(17,202,160,0.1);color:var(--teal);font-weight:700">정상</span>`;
+      return `<tr style="${rowBg};border-bottom:1px solid var(--border)">
+        <td class="sd-sku-cell" style="position:sticky;left:0;background:${skuBg};font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:180px;max-width:300px;cursor:default;border-right:2px solid var(--border);padding:8px 10px" title="${s.sku}">${s.sku}</td>
         ${allChannels.map(ch=>{
           const v = s.channels[ch]||0;
-          return `<td class="td-right" style="font-family:Montserrat,sans-serif;font-size:12px;color:${v>0?'var(--t1)':'var(--t3)'}">${v>0?v.toLocaleString():'-'}</td>`;
+          const chBg = ch==='자사몰'&&v>0 ? 'rgba(17,202,160,0.06)' : ch==='쿠팡'&&v>0 ? 'rgba(232,20,12,0.04)' : ch==='스마트스토어'&&v>0 ? 'rgba(3,199,90,0.05)' : '';
+          return `<td class="td-right" style="font-family:Montserrat,sans-serif;font-size:12px;padding:8px 6px;${chBg};color:${v>0?'var(--t1)':'var(--t3)'}">
+            ${v>0?`<strong>${v.toLocaleString()}</strong>`:'-'}
+          </td>`;
         }).join('')}
-        ${allDates.map(d=>{
+        ${allDates.map((d,di)=>{
           const v = s.dates[d]||0;
-          const prev = allDates.indexOf(d)>0 ? (s.dates[allDates[allDates.indexOf(d)-1]]||0) : null;
-          const trend = prev!==null && prev>0 ? (v-prev)/prev : null;
-          const trendStr = trend!==null ? `<span style="font-size:9px;color:${trend<-0.3?'var(--red)':trend>0.3?'var(--teal)':'var(--t3)'}">${trend>0?'▲':'▼'}${Math.abs(Math.round(trend*100))}%</span>` : '';
-          return `<td class="td-right" style="font-family:Montserrat,sans-serif;font-size:12px">${v>0?v.toLocaleString():''} ${trendStr}</td>`;
+          const prev = di>0 ? (s.dates[allDates[di-1]]||0) : null;
+          const drop = prev!==null && prev>0 && v < prev*0.5;
+          return `<td class="td-right" style="font-family:Montserrat,sans-serif;font-size:11px;padding:6px 4px;color:${drop?'var(--red)':v>0?'var(--t1)':'var(--t3)'}">
+            ${v>0?v.toLocaleString():'-'}${drop?'<span style="font-size:8px"> ▼</span>':''}
+          </td>`;
         }).join('')}
-        <td class="td-right" style="font-family:Montserrat,sans-serif;font-weight:800;background:rgba(0,45,94,0.04);color:${s.totalQty>0?'var(--blue)':'var(--t3)'}">${s.totalQty>0?s.totalQty.toLocaleString():'-'}</td>
-        <td>${issueBadge}</td>
+        <td class="td-right" style="font-family:Montserrat,sans-serif;font-weight:800;font-size:13px;padding:8px 8px;background:rgba(0,45,94,0.05);color:${s.totalQty>0?'var(--navy)':'var(--t3)'};border-left:1px solid var(--border)">${s.totalQty>0?s.totalQty.toLocaleString():'-'}</td>
+        <td style="text-align:center;padding:6px 4px">${statusBadge}</td>
       </tr>`;
     }).join('') +
     // 합계 행
