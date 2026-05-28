@@ -4704,14 +4704,18 @@ function parseCoupangRows(rows, filename) {
 // ── 어드민 파일 파싱 ──
 function parseAdminRows(rows, filename) {
   const newRows = rows.map(r => {
-    const channel = (r['판매처'] || r['판매처그룹'] || '').trim();
+    let channel = (r['판매처'] || r['판매처그룹'] || '').trim();
+    // 카페24 = 자사몰
+    if(channel.includes('카페24') || channel.includes('Cafe24') || channel === '자체몰') channel = '자사몰';
     const sku     = (r['공급처옵션명'] ? r['공급처상품명']+' '+r['공급처옵션명'] : r['공급처상품명'] || r['상품명'] || '').trim();
     const qty     = parseInt(String(r['수량']||'0').replace(/,/g,'')) || 0;
     const rev     = parseFloat(String(r['판매가금액']||r['판매금액']||'0').replace(/,/g,'')) || 0;
-    // 날짜는 파일명에서 추출 or 오늘
-    const dateMatch = filename.match(/(\d{8})/);
-    const dateRaw = dateMatch ? dateMatch[1] : new Date().toISOString().slice(0,10).replace(/-/g,'');
-    const date = dateRaw.slice(0,4)+'-'+dateRaw.slice(4,6)+'-'+dateRaw.slice(6,8);
+    // 날짜: 파일명에서 8자리 날짜 추출 (YYYYMMDD) or 오늘
+    // 어드민 파일명(865121844 같은 9자리 숫자)은 날짜가 아니므로 제외
+    const dateMatch = filename.match(/(?<![0-9])(20\d{2})(\d{2})(\d{2})(?![0-9])/);
+    const date = dateMatch
+      ? `${dateMatch[1]}-${dateMatch[2]}-${dateMatch[3]}`
+      : new Date().toISOString().slice(0,10);
     return { date, sku, channel, qty, rev };
   }).filter(r => r.sku && r.channel && (r.qty > 0 || r.rev > 0));
 
@@ -4835,7 +4839,7 @@ function renderSDTable() {
   // 채널별 집계
   const CH_GROUPS = {
     coupang: ['쿠팡'],
-    self:    ['자사몰', 'meliens', '카페24', '자체몰'],
+    self:    ['자사몰', 'meliens', '카페24', '카페 24', 'cafe24', '자체몰'],
     ss:      ['스마트스토어', '네이버', 'smartstore', 'NAVER'],
   };
   function getChQty(group) {
