@@ -1106,6 +1106,21 @@ tbody tr:hover td{background:var(--surface2)}
         <div id="sdLastUpdate" style="margin-top:12px;font-size:11px;color:var(--t3);text-align:right"></div>
       </div>
 
+      <!-- 업로드 파일 목록 -->
+      <div id="sdFileList" style="display:none;margin-bottom:16px">
+        <div class="card" style="padding:0;overflow:hidden">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border)">
+            <div style="display:flex;align-items:center;gap:8px">
+              <svg style="width:14px;height:14px;stroke:var(--t2);fill:none;stroke-width:2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              <span style="font-size:13px;font-weight:700;color:var(--t1)">업로드된 파일 목록</span>
+              <span id="sdFileCount" style="font-size:11px;padding:2px 7px;background:var(--surface2);border-radius:10px;color:var(--t3);font-weight:600"></span>
+            </div>
+            <button onclick="document.getElementById('sdFileList').style.display='none'" style="font-size:11px;color:var(--t3);background:none;border:none;cursor:pointer">접기 ▲</button>
+          </div>
+          <div id="sdFileListBody" style="padding:0"></div>
+        </div>
+      </div>
+
       <!-- 전체 합계 바 -->
       <div class="card" style="margin-bottom:12px;padding:14px 18px;display:flex;align-items:center;gap:16px;flex-wrap:wrap">
         <div style="font-size:11px;font-weight:700;color:var(--t3);font-family:Montserrat,sans-serif;letter-spacing:1px">전체 합계</div>
@@ -4641,7 +4656,8 @@ function clearSalesSearch() {
 // ════════════════════════════════════════════════
 const SD_STORAGE_KEY  = 'meliens_salesdata_rows';
 const SD_META_KEY     = 'meliens_salesdata_meta';
-let sdRawRows   = [];   // [{date, sku, channel, qty, rev, isIssue}]
+let sdRawRows      = [];   // [{date, sku, channel, qty, rev, _file, isIssue}]
+let sdFileRegistry = [];   // [{filename, source, rows, channels, dateRange, uploadedAt}]
 let sdFilter    = 'all';
 let sdSort      = 'desc';
 
@@ -4936,20 +4952,34 @@ function parseAdminRows(rows, filename) {
 
 // ── 데이터 병합 및 저장 ──
 function mergeSDRows(newRows, source, filename) {
-  // 기존 데이터에서 같은 채널 날짜는 덮어쓰기
   const channels = [...new Set(newRows.map(r=>r.channel))];
   const dates    = [...new Set(newRows.map(r=>r.date))];
 
-  // 같은 채널+날짜 조합 제거
-  // 유효하지 않은 날짜 필터링 (8651-21-84 같은 잘못된 날짜 제거)
   const validDatePattern = /^20[2-9]\d-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\d|3[01])$/;
   newRows = newRows.filter(r => validDatePattern.test(r.date));
   if(newRows.length === 0) { showToast('⚠️ 유효한 날짜가 있는 데이터가 없습니다'); return; }
-  // 채널명 정규화
-  newRows.forEach(r => { r.channel = normalizeChannel(r.channel); });
+  newRows.forEach(r => { r.channel = normalizeChannel(r.channel); r._file = filename; });
 
+  // 같은 파일명이 이미 있으면 그 데이터 먼저 제거 (재업로드 대응)
+  sdRawRows = sdRawRows.filter(r => r._file !== filename);
+  // 같은 채널+날짜도 제거 (다른 파일로 같은 날짜 덮어쓰기)
   sdRawRows = sdRawRows.filter(r => !(channels.includes(r.channel) && dates.includes(r.date)));
   sdRawRows = [...sdRawRows, ...newRows];
+
+  // 파일 레지스트리 업데이트
+  const newDatesArr = [...new Set(newRows.map(r=>r.date))].sort();
+  const dateRange   = newDatesArr.length===1 ? newDatesArr[0] : newDatesArr[0]+' ~ '+newDatesArr[newDatesArr.length-1];
+  const fileEntry = {
+    filename,
+    source,
+    rows:      newRows.length,
+    channels:  [...new Set(newRows.map(r=>r.channel))].join(', '),
+    dateRange,
+    uploadedAt: new Date().toLocaleString('ko-KR',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'})
+  };
+  sdFileRegistry = sdFileRegistry.filter(f => f.filename !== filename);
+  sdFileRegistry.push(fileEntry);
+  try { saveToStorage('meliens_sd_files', sdFileRegistry); } catch(e) {}
 
   // 저장
   try { saveToStorage(SD_STORAGE_KEY, sdRawRows); } catch(e) {}
@@ -4965,7 +4995,7 @@ function mergeSDRows(newRows, source, filename) {
 
   // 날짜 범위 계산
   const newDates = [...new Set(newRows.map(r=>r.date))].sort();
-  const dateRange = newDates.length === 1
+  dateRange = newDates.length === 1
     ? newDates[0]
     : `${newDates[0]} ~ ${newDates[newDates.length-1]}`;
 
@@ -4988,6 +5018,7 @@ function mergeSDRows(newRows, source, filename) {
   renderSDTable();
   // 이커머스 매출 + 홈 KPI 자동 동기화
   setTimeout(() => syncRevenueFromSD(), 100);
+  renderFileRegistry();
   showToast(`✅ ${filename} 반영 완료 — ${newRows.length}개 행 · ${dateRange}`);
 }
 
@@ -5103,6 +5134,76 @@ function setSDFilter(type) {
     if(btn) { btn.style.background = t.toLowerCase()===type?'var(--navy)':'var(--surface)'; btn.style.color = t.toLowerCase()===type?'#fff':'var(--t3)'; }
   });
   renderSDTable();
+}
+
+
+// ── 업로드 파일 목록 렌더링 ──
+function renderFileRegistry() {
+  const container = document.getElementById('sdFileList');
+  const body      = document.getElementById('sdFileListBody');
+  const counter   = document.getElementById('sdFileCount');
+  if(!container || !body) return;
+
+  if(sdFileRegistry.length === 0) {
+    container.style.display = 'none';
+    return;
+  }
+
+  container.style.display = 'block';
+  if(counter) counter.textContent = sdFileRegistry.length + '개 파일';
+
+  // 최신 업로드 순 정렬
+  const sorted = [...sdFileRegistry].reverse();
+
+  const sourceIcon = s => s==='쿠팡'?'🛒':s==='meliens'?'📊':'📂';
+  const sourceLabel = s => s==='쿠팡'?'쿠팡 일간성과':s==='meliens'?'일일판매수량':'어드민 매출통계';
+
+  body.innerHTML = sorted.map((f, i) => `
+    <div style="display:flex;align-items:center;gap:12px;padding:11px 16px;border-bottom:1px solid var(--border);transition:background 0.15s"
+         onmouseenter="this.style.background='var(--surface2)'" onmouseleave="this.style.background=''">
+      <div style="width:28px;height:28px;border-radius:7px;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0">${sourceIcon(f.source)}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12px;font-weight:700;color:var(--t1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${f.filename}">${f.filename}</div>
+        <div style="font-size:11px;color:var(--t3);margin-top:2px">
+          <span style="color:var(--blue);font-weight:600">${sourceLabel(f.source)}</span>
+          &nbsp;·&nbsp;${f.channels}
+          &nbsp;·&nbsp;${f.dateRange}
+          &nbsp;·&nbsp;${f.rows.toLocaleString()}행
+        </div>
+      </div>
+      <div style="font-size:10px;color:var(--t3);white-space:nowrap;margin-right:8px">${f.uploadedAt}</div>
+      <button onclick="deleteSDFile('${f.filename.replace(/'/g,"\'")}')"
+        style="display:flex;align-items:center;gap:4px;padding:5px 10px;border-radius:6px;border:1px solid var(--red);background:rgba(255,75,75,0.06);color:var(--red);font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0"
+        onmouseenter="this.style.background='rgba(255,75,75,0.15)'" onmouseleave="this.style.background='rgba(255,75,75,0.06)'">
+        <svg style="width:11px;height:11px;stroke:var(--red);fill:none;stroke-width:2.5" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+        삭제
+      </button>
+    </div>
+  `).join('');
+}
+
+// ── 파일 데이터 삭제 ──
+function deleteSDFile(filename) {
+  if(!confirm(`"${filename}" 데이터를 삭제할까요?`)) return;
+
+  // sdRawRows에서 해당 파일 행 제거
+  const before = sdRawRows.length;
+  sdRawRows = sdRawRows.filter(r => r._file !== filename);
+  const removed = before - sdRawRows.length;
+
+  // 파일 레지스트리에서 제거
+  sdFileRegistry = sdFileRegistry.filter(f => f.filename !== filename);
+
+  // 저장
+  try { saveToStorage(SD_STORAGE_KEY, sdRawRows); } catch(e) {}
+  try { saveToStorage('meliens_sd_files', sdFileRegistry); } catch(e) {}
+
+  // UI 업데이트
+  renderFileRegistry();
+  updateSDFilters();
+  renderSDTable();
+  syncRevenueFromSD();
+  showToast(`🗑 "${filename}" 삭제 완료 (${removed}행 제거)`);
 }
 
 // ── 정렬 버튼 ──
@@ -5438,11 +5539,16 @@ function _buildSalesExcel() {
 
 // ── 페이지 진입 시 초기화 ──
 function initSalesDataPage() {
+  // 파일 레지스트리 복구
+  const savedFiles = loadFromStorage('meliens_sd_files');
+  if(savedFiles && Array.isArray(savedFiles)) sdFileRegistry = savedFiles;
+
   const saved = loadFromStorage(SD_STORAGE_KEY);
   if(saved && saved.length > 0) {
-    sdRawRows = saved;
+    sdRawRows = saved.map(r => ({...r, channel: normalizeChannel(r.channel)}));
     updateSDFilters();
     renderSDTable();
+    renderFileRegistry();
     const meta = loadFromStorage(SD_META_KEY);
     const metaEl = document.getElementById('sdLastUpdate');
     if(metaEl && meta) metaEl.textContent = `마지막 업로드: ${meta.lastFile} · ${meta.lastUpdate}`;
@@ -5451,6 +5557,7 @@ function initSalesDataPage() {
       const el = document.getElementById(id);
       if(el && !el.textContent) el.textContent = '이전 데이터 복구됨';
     });
+    setTimeout(() => syncRevenueFromSD(), 300);
   }
 }
 
