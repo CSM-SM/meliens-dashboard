@@ -4716,33 +4716,86 @@ function processSalesDataFile(file, type) {
 
 // ── 멜리언스 일일판매수량 XLSX 전용 파서 ──
 function parseMeliensXLSX(wb, filename) {
-  // "판매수량피벗(누적)" 시트 우선, 없으면 첫 시트
   const sheetName = wb.SheetNames.find(s => s.includes('판매수량피벗') || s.includes('누적')) || wb.SheetNames[0];
   const ws = wb.Sheets[sheetName];
-  const raw = XLSX.utils.sheet_to_json(ws, {header:1, defval:null, raw:false});
 
-  // 구조: 행1=타이틀, 행3=헤더레이블, 행4=날짜행, 행5=채널요약, 행6~=데이터
-  // 날짜 행(행4, index=3) 파싱
-  const dateRow = raw[3] || [];
-  const dateColMap = {}; // col_idx → 'YYYY-MM-DD'
-  dateRow.forEach((v, ci) => {
-    if(!v) return;
+  // raw:true 로 읽어야 날짜 셀을 Excel serial number로 받음 → 직접 변환
+  // raw:false는 로케일 의존적 문자열 변환이라 환경마다 다를 수 있음
+  const rawTrue  = XLSX.utils.sheet_to_json(ws, {header:1, defval:null, raw:true});
+  const rawFalse = XLSX.utils.sheet_to_json(ws, {header:1, defval:null, raw:false});
+
+  // Excel serial → YYYY-MM-DD 변환 함수
+  function excelSerialToDate(serial) {
+    if(typeof serial !== 'number' || serial < 40000 || serial > 80000) return null;
+    // Excel epoch: 1900-01-00 (실제로 1899-12-30 기준)
+    const msPerDay = 86400000;
+    const excelEpoch = new Date(1899, 11, 30).getTime();
+    const d = new Date(excelEpoch + serial * msPerDay);
+    const y = d.getFullYear(), mo = d.getMonth()+1, da = d.getDate();
+    if(y < 2020 || y > 2035) return null;
+    return `${y}-${String(mo).padStart(2,'0')}-${String(da).padStart(2,'0')}`;
+  }
+
+  // 날짜 값을 YYYY-MM-DD로 파싱 (여러 형식 지원)
+  function parseToDate(v, vRaw) {
+    if(v === null || v === undefined) return null;
     const s = String(v).trim();
-    if(s === '총합계' || s.includes('요약')) return;
-    // 날짜 형식: "2025-11-01 00:00:00" 또는 "2025-11-01" 또는 Date
-    const m = s.match(/^(20\d{2})[\-/.](\d{2})[\-/.](\d{2})/);
-    if(m) dateColMap[ci] = `${m[1]}-${m[2]}-${m[3]}`;
+    if(!s || s === '총합계' || s.includes('요약') || s === '-') return null;
+
+    // 1) "2025-11-01" 또는 "2025-11-01 00:00:00" 형태
+    const m1 = s.match(/^(20[2-9]\d)[-/.](0[1-9]|1[0-2])[-/.](0[1-9]|[12]\d|3[01])/);
+    if(m1) return `${m1[1]}-${m1[2]}-${m1[3]}`;
+
+    // 2) "11/1/2025" 또는 "1/11/2025" 같은 로케일 형태
+    const m2 = s.match(/^(\d{1,2})[/.](\d{1,2})[/.](\d{4})$/);
+    if(m2) {
+      const [, a, b, y] = m2;
+      if(parseInt(y) >= 2020) {
+        // MM/DD/YYYY 가정
+        const mo = String(a).padStart(2,'0'), da = String(b).padStart(2,'0');
+        return `${y}-${mo}-${da}`;
+      }
+    }
+
+    // 3) JS Date 객체 (cellDates:true일 때)
+    if(v instanceof Date) {
+      const y=v.getFullYear(), mo=v.getMonth()+1, da=v.getDate();
+      if(y>=2020 && y<=2035) return `${y}-${String(mo).padStart(2,'0')}-${String(da).padStart(2,'0')}`;
+    }
+
+    // 4) Excel serial number (raw:true일 때 숫자)
+    if(typeof vRaw === 'number') {
+      const d = excelSerialToDate(vRaw);
+      if(d) return d;
+    }
+
+    return null;
+  }
+
+  // 날짜 행(행4, index=3) 파싱
+  const dateRowFalse = rawFalse[3] || [];
+  const dateRowTrue  = rawTrue[3]  || [];
+  const dateColMap = {};
+
+  dateRowFalse.forEach((v, ci) => {
+    const dt = parseToDate(v, dateRowTrue[ci]);
+    if(dt) dateColMap[ci] = dt;
   });
 
+  // 디버그 로그
+  console.log('멜리언스 파일 날짜 컬럼 수:', Object.keys(dateColMap).length);
   if(Object.keys(dateColMap).length === 0) {
-    showToast('⚠️ 멜리언스 파일: 날짜 컬럼을 찾을 수 없습니다');
+    // 행4 샘플 출력해서 어떤 값이 있는지 확인
+    console.warn('행4 샘플(raw:false):', dateRowFalse.slice(0,10));
+    console.warn('행4 샘플(raw:true):', dateRowTrue.slice(0,10));
+    showToast('⚠️ 멜리언스 파일: 날짜 컬럼을 찾을 수 없습니다 (콘솔 확인)');
     return;
   }
 
   // 데이터 행 (행6~, index=5)
   const newRows = [];
-  for(let ri = 5; ri < raw.length; ri++) {
-    const row = raw[ri];
+  for(let ri = 5; ri < rawFalse.length; ri++) {
+    const row = rawFalse[ri];
     if(!row) continue;
     const name = row[0] ? String(row[0]).trim() : '';
     if(!name || name === '총합계' || name === '-') continue;
@@ -4750,7 +4803,7 @@ function parseMeliensXLSX(wb, filename) {
     Object.entries(dateColMap).forEach(([ci, dt]) => {
       const v = row[parseInt(ci)];
       if(v === null || v === undefined || v === '' || v === '-') return;
-      const qty = parseInt(String(v).replace(/,/g,''));
+      const qty = parseInt(String(v).replace(/[^0-9-]/g,''));
       if(!isNaN(qty) && qty > 0) {
         newRows.push({ date: dt, sku: name, channel: '전체(판매수량)', qty, rev: 0 });
       }
@@ -4762,13 +4815,11 @@ function parseMeliensXLSX(wb, filename) {
     return;
   }
 
-  // 날짜 범위 표시
   const dates = [...new Set(newRows.map(r=>r.date))].sort();
-  console.log(`멜리언스 XLSX: ${newRows.length}행, ${dates[0]}~${dates[dates.length-1]}`);
+  console.log(`멜리언스 XLSX 파싱 완료: ${newRows.length}행, ${dates[0]}~${dates[dates.length-1]}`);
 
-  // 상태바에 즉시 표시
   const statusEl = document.getElementById('adminFileStatus');
-  if(statusEl) statusEl.textContent = `✅ ${filename} · ${Object.keys(dateColMap).length}일치`;
+  if(statusEl) statusEl.textContent = `✅ ${filename} · ${dates.length}일`;
 
   mergeSDRows(newRows, 'meliens', filename);
 }
