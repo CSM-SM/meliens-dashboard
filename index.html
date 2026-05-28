@@ -362,6 +362,10 @@ tbody tr:hover td{background:var(--surface2)}
       <svg viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
       재고 관리
     </div>
+    <div class="nav-item" onclick="showPage('salesdata',this)">
+      <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="9" x2="9" y2="21"/><line x1="15" y1="9" x2="15" y2="21"/></svg>
+      채널/SKU별 판매
+    </div>
     <div class="nav-group-label">ASSETS</div>
 
     <div class="nav-item" onclick="showPage('upload',this)">
@@ -1038,6 +1042,130 @@ tbody tr:hover td{background:var(--surface2)}
       </div>
     </div>
 
+    <!-- ═══ SALES DATA PAGE ═══ -->
+    <div class="page" id="page-salesdata">
+
+      <!-- 헤더 -->
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:12px">
+        <div>
+          <div class="section-title">채널/SKU별 판매 데이터</div>
+          <div class="section-sub">매일 아침 파일을 업로드하면 채널별·SKU별·일자별 판매 현황이 자동으로 정리됩니다.</div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button onclick="exportSalesDataExcel()" style="display:flex;align-items:center;gap:6px;padding:8px 14px;background:var(--teal);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">
+            <svg style="width:13px;height:13px;stroke:#fff;fill:none;stroke-width:2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            엑셀 다운로드
+          </button>
+        </div>
+      </div>
+
+      <!-- 파일 업로드 영역 -->
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-header">
+          <div class="card-title">📂 일일 판매 데이터 업로드</div>
+          <div style="font-size:11px;color:var(--t3)">매일 아침 전날 데이터를 업로드하세요 · 브라우저에 자동 저장됩니다</div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <!-- 쿠팡 성과 파일 -->
+          <div style="border:2px dashed var(--border);border-radius:10px;padding:16px;text-align:center;cursor:pointer;transition:all .2s"
+            id="coupangDropZone"
+            ondragover="event.preventDefault();this.style.borderColor='var(--blue)'"
+            ondragleave="this.style.borderColor='var(--border)'"
+            ondrop="handleSalesDataDrop(event,'coupang')"
+            onclick="document.getElementById('coupangFile').click()">
+            <div style="font-size:20px;margin-bottom:6px">🛒</div>
+            <div style="font-size:12px;font-weight:700;color:var(--t1);margin-bottom:3px">쿠팡 일간 성과</div>
+            <div style="font-size:10px;color:var(--t3);margin-bottom:8px">일간_종합_성과_지표_YYYYMMDD.csv</div>
+            <div id="coupangFileStatus" style="font-size:11px;color:var(--teal);font-weight:600"></div>
+            <input type="file" id="coupangFile" accept=".csv,.xlsx,.xls" style="display:none" onchange="handleSalesDataUpload(event,'coupang')">
+          </div>
+          <!-- 어드민 매출통계 파일 -->
+          <div style="border:2px dashed var(--border);border-radius:10px;padding:16px;text-align:center;cursor:pointer;transition:all .2s"
+            id="adminDropZone"
+            ondragover="event.preventDefault();this.style.borderColor='var(--purple)'"
+            ondragleave="this.style.borderColor='var(--border)'"
+            ondrop="handleSalesDataDrop(event,'admin')"
+            onclick="document.getElementById('adminFile').click()">
+            <div style="font-size:20px;margin-bottom:6px">📊</div>
+            <div style="font-size:12px;font-weight:700;color:var(--t1);margin-bottom:3px">어드민 매출통계</div>
+            <div style="font-size:10px;color:var(--t3);margin-bottom:8px">어드민상품매출통계_XXXXXXXXX.xls</div>
+            <div id="adminFileStatus" style="font-size:11px;color:var(--teal);font-weight:600"></div>
+            <input type="file" id="adminFile" accept=".csv,.xlsx,.xls,.html,.htm" style="display:none" onchange="handleSalesDataUpload(event,'admin')">
+          </div>
+        </div>
+        <!-- 마지막 업로드 정보 -->
+        <div id="sdLastUpdate" style="margin-top:12px;font-size:11px;color:var(--t3);text-align:right"></div>
+      </div>
+
+      <!-- KPI 카드 -->
+      <div class="grid-4" style="margin-bottom:16px">
+        <div class="kpi-card"><div class="kpi-accent" style="background:var(--blue)"></div>
+          <div class="kpi-label">총 판매수량</div>
+          <div class="kpi-value" id="sd-total-qty">--<span class="kpi-unit">개</span></div>
+          <div class="kpi-change neutral" id="sd-total-sub">데이터 없음</div>
+        </div>
+        <div class="kpi-card"><div class="kpi-accent" style="background:var(--teal)"></div>
+          <div class="kpi-label">총 매출</div>
+          <div class="kpi-value" id="sd-total-rev">--<span class="kpi-unit">원</span></div>
+          <div class="kpi-change neutral" id="sd-rev-sub">어드민 파일 기준</div>
+        </div>
+        <div class="kpi-card" style="cursor:pointer" onclick="setSDFilter('issue')" onmouseenter="this.style.boxShadow='0 4px 20px rgba(255,75,75,0.2)'" onmouseleave="this.style.boxShadow=''">
+          <div class="kpi-accent" style="background:var(--red)"></div>
+          <div class="kpi-label">이슈 SKU <span style="font-size:10px;color:var(--red)">▶ 클릭필터</span></div>
+          <div class="kpi-value" id="sd-issue-cnt">--<span class="kpi-unit">개</span></div>
+          <div class="kpi-change down" id="sd-issue-sub">판매 0 또는 급감</div>
+        </div>
+        <div class="kpi-card"><div class="kpi-accent" style="background:var(--purple)"></div>
+          <div class="kpi-label">활성 채널</div>
+          <div class="kpi-value" id="sd-channel-cnt">--<span class="kpi-unit">개</span></div>
+          <div class="kpi-change neutral" id="sd-channel-sub">판매 발생 채널</div>
+        </div>
+      </div>
+
+      <!-- 필터 바 -->
+      <div class="card" style="margin-bottom:14px;padding:12px 16px">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <!-- 날짜 선택 -->
+          <select id="sdDateSelect" onchange="renderSDTable()" style="font-size:12px;padding:6px 10px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--t1);font-family:Montserrat,sans-serif;font-weight:600">
+            <option value="all">전체 날짜</option>
+          </select>
+          <!-- 채널 선택 -->
+          <select id="sdChannelSelect" onchange="renderSDTable()" style="font-size:12px;padding:6px 10px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--t1);font-family:Montserrat,sans-serif;font-weight:600">
+            <option value="all">전체 채널</option>
+          </select>
+          <!-- 검색 -->
+          <div style="position:relative;flex:1;min-width:150px">
+            <svg style="position:absolute;left:8px;top:50%;transform:translateY(-50%);width:12px;height:12px;stroke:var(--t3);fill:none;stroke-width:2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input id="sdSearch" type="text" placeholder="SKU 또는 품목명 검색..."
+              oninput="renderSDTable()"
+              style="width:100%;padding:6px 10px 6px 26px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--t1);font-size:12px">
+          </div>
+          <!-- 필터 버튼 -->
+          <div style="display:flex;gap:4px">
+            <button onclick="setSDFilter('all')" id="sdFAll" style="font-size:11px;padding:5px 10px;border-radius:16px;border:1px solid var(--border);background:var(--navy);color:#fff;cursor:pointer;font-weight:700;font-family:Montserrat,sans-serif">전체</button>
+            <button onclick="setSDFilter('issue')" id="sdFIssue" style="font-size:11px;padding:5px 10px;border-radius:16px;border:1px solid var(--border);background:var(--surface);color:var(--t3);cursor:pointer;font-weight:700;font-family:Montserrat,sans-serif">⚠ 이슈</button>
+            <button onclick="setSDFilter('top')" id="sdFTop" style="font-size:11px;padding:5px 10px;border-radius:16px;border:1px solid var(--border);background:var(--surface);color:var(--t3);cursor:pointer;font-weight:700;font-family:Montserrat,sans-serif">🔥 상위</button>
+          </div>
+          <div id="sdRowCount" style="font-size:11px;color:var(--t3);margin-left:auto"></div>
+        </div>
+      </div>
+
+      <!-- 피벗 테이블 -->
+      <div class="card" id="sdTableCard">
+        <div id="sdEmptyMsg" style="padding:48px;text-align:center;color:var(--t3)">
+          <svg style="width:40px;height:40px;stroke:var(--t3);fill:none;stroke-width:1.5;margin-bottom:12px" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="9" x2="9" y2="21"/></svg>
+          <div style="font-size:14px;font-weight:600;color:var(--t2);margin-bottom:6px">판매 데이터를 업로드해주세요</div>
+          <div style="font-size:12px;line-height:1.7">쿠팡 일간 성과 파일 또는 어드민 매출통계 파일을 업로드하면<br>채널별·SKU별·일자별 피벗 테이블이 자동으로 생성됩니다</div>
+        </div>
+        <div class="table-wrap" id="sdTableWrap" style="display:none">
+          <table id="sdTable">
+            <thead id="sdThead"></thead>
+            <tbody id="sdTbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
     <!-- ═══ UPLOAD PAGE ═══ -->
     <div class="page" id="page-upload">
       <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:4px;flex-wrap:wrap;gap:10px">
@@ -1179,12 +1307,13 @@ function showPage(id, el){
   document.getElementById('page-'+id).classList.add('active');
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   if(el) el.classList.add('active');
-  const titles = {home:'종합 대시보드',sales:'이커머스 매출 관리',ads:'광고 성과 대시보드',b2b:'B2B / 신규 매출',cx:'CX / VOC 관리',inventory:'재고 관리',upload:'데이터 업로드 센터'};
+  const titles = {home:'종합 대시보드',sales:'이커머스 매출 관리',ads:'광고 성과 대시보드',b2b:'B2B / 신규 매출',cx:'CX / VOC 관리',inventory:'재고 관리',salesdata:'채널/SKU별 판매 데이터',upload:'데이터 업로드 센터'};
   document.getElementById('pageTitle').textContent = titles[id] || '';
   if(id==='ads') setTimeout(()=>{drawAdsCharts();},50);
   if(id==='cx') setTimeout(()=>{renderCXPage();},50);
   if(id==='upload') setTimeout(()=>{renderDataStatus();},50);
   if(id==='inventory' && invRawData.length===0) setTimeout(()=>{loadInventoryFromSheet();},100);
+  if(id==='salesdata') setTimeout(()=>{initSalesDataPage();},100);
 }
 
 function toggleSidebar(){
@@ -4459,6 +4588,369 @@ function filterSalesTable() {
 function clearSalesSearch() {
   const input = document.getElementById('salesSearch');
   if(input) { input.value = ''; filterSalesTable(); input.focus(); }
+}
+
+
+// ════════════════════════════════════════════════
+// 채널/SKU별 판매 데이터 관리
+// ════════════════════════════════════════════════
+const SD_STORAGE_KEY  = 'meliens_salesdata_rows';
+const SD_META_KEY     = 'meliens_salesdata_meta';
+let sdRawRows   = [];   // [{date, sku, channel, qty, rev, isIssue}]
+let sdFilter    = 'all';
+
+// ── 파일 드롭 처리 ──
+function handleSalesDataDrop(event, type) {
+  event.preventDefault();
+  document.getElementById(type==='coupang'?'coupangDropZone':'adminDropZone').style.borderColor='var(--border)';
+  const file = event.dataTransfer.files[0];
+  if(file) processSalesDataFile(file, type);
+}
+function handleSalesDataUpload(event, type) {
+  const file = event.target.files[0];
+  if(file) processSalesDataFile(file, type);
+  event.target.value = '';
+}
+
+function processSalesDataFile(file, type) {
+  const statusEl = document.getElementById(type==='coupang'?'coupangFileStatus':'adminFileStatus');
+  if(statusEl) statusEl.textContent = '⏳ 읽는 중...';
+  showToast('📂 파일 읽는 중...');
+
+  const isHTML = file.name.toLowerCase().endsWith('.xls') || file.name.toLowerCase().endsWith('.html');
+  const isCSV  = file.name.toLowerCase().endsWith('.csv');
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      let rows = [];
+      if(isCSV) {
+        const text = e.target.result;
+        const parsed = parseCSV(text);
+        if(parsed.length < 2) throw new Error('데이터 없음');
+        const headers = parsed[0].map(h=>h.trim());
+        rows = parsed.slice(1).filter(r=>r.some(c=>c.trim())).map(r=>{
+          const obj = {};
+          headers.forEach((h,i)=>{ obj[h] = r[i]||''; });
+          return obj;
+        });
+        if(type==='coupang') parseCoupangRows(rows, file.name);
+        else parseAdminRows(rows, file.name);
+      } else if(isHTML) {
+        // HTML XLS 파싱
+        const text = e.target.result;
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(text, 'text/html');
+        const table = doc.querySelector('table');
+        if(!table) throw new Error('테이블 없음');
+        const tRows = table.querySelectorAll('tr');
+        const headers = Array.from(tRows[0].querySelectorAll('td,th')).map(td=>td.textContent.trim());
+        rows = Array.from(tRows).slice(1).map(tr=>{
+          const cells = Array.from(tr.querySelectorAll('td,th')).map(td=>td.textContent.trim());
+          const obj = {};
+          headers.forEach((h,i)=>{ obj[h] = cells[i]||''; });
+          return obj;
+        }).filter(r=>Object.values(r).some(v=>v));
+        parseAdminRows(rows, file.name);
+      } else {
+        // XLSX
+        const data = new Uint8Array(e.target.result);
+        const wb = XLSX.read(data, {type:'array'});
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        rows = XLSX.utils.sheet_to_json(ws, {defval:''});
+        if(type==='coupang') parseCoupangRows(rows, file.name);
+        else parseAdminRows(rows, file.name);
+      }
+    } catch(err) {
+      console.error(err);
+      showToast('❌ 파일 읽기 오류: ' + err.message);
+      if(statusEl) statusEl.textContent = '❌ 오류';
+    }
+  };
+  if(isCSV || isHTML) reader.readAsText(file, 'UTF-8');
+  else reader.readAsArrayBuffer(file);
+}
+
+// ── 쿠팡 파일 파싱 ──
+function parseCoupangRows(rows, filename) {
+  // 날짜: rows[0]['날짜'] → YYYYMMDD
+  const newRows = rows.map(r => {
+    const dateRaw = String(r['날짜']||'').trim();
+    const date = dateRaw.length===8
+      ? dateRaw.slice(0,4)+'-'+dateRaw.slice(4,6)+'-'+dateRaw.slice(6,8)
+      : dateRaw.slice(0,10);
+    const sku  = (r['SKU 명'] || r['벤더아이템명'] || '').trim();
+    const qty  = parseInt(String(r['판매수량(Units Sold)']||'0').replace(/,/g,'')) || 0;
+    const rev  = parseFloat(String(r['매출액(GMV)']||'0').replace(/,/g,'')) || 0;
+    return { date, sku, channel:'쿠팡', qty, rev, rating: parseFloat(r['평균 상품 평점']||0)||0 };
+  }).filter(r => r.sku && r.date);
+
+  mergeSDRows(newRows, '쿠팡', filename);
+}
+
+// ── 어드민 파일 파싱 ──
+function parseAdminRows(rows, filename) {
+  const newRows = rows.map(r => {
+    const channel = (r['판매처'] || r['판매처그룹'] || '').trim();
+    const sku     = (r['공급처옵션명'] ? r['공급처상품명']+' '+r['공급처옵션명'] : r['공급처상품명'] || r['상품명'] || '').trim();
+    const qty     = parseInt(String(r['수량']||'0').replace(/,/g,'')) || 0;
+    const rev     = parseFloat(String(r['판매가금액']||r['판매금액']||'0').replace(/,/g,'')) || 0;
+    // 날짜는 파일명에서 추출 or 오늘
+    const dateMatch = filename.match(/(\d{8})/);
+    const dateRaw = dateMatch ? dateMatch[1] : new Date().toISOString().slice(0,10).replace(/-/g,'');
+    const date = dateRaw.slice(0,4)+'-'+dateRaw.slice(4,6)+'-'+dateRaw.slice(6,8);
+    return { date, sku, channel, qty, rev };
+  }).filter(r => r.sku && r.channel && (r.qty > 0 || r.rev > 0));
+
+  mergeSDRows(newRows, 'admin', filename);
+}
+
+// ── 데이터 병합 및 저장 ──
+function mergeSDRows(newRows, source, filename) {
+  // 기존 데이터에서 같은 채널 날짜는 덮어쓰기
+  const channels = [...new Set(newRows.map(r=>r.channel))];
+  const dates    = [...new Set(newRows.map(r=>r.date))];
+
+  // 같은 채널+날짜 조합 제거
+  sdRawRows = sdRawRows.filter(r => !(channels.includes(r.channel) && dates.includes(r.date)));
+  sdRawRows = [...sdRawRows, ...newRows];
+
+  // 저장
+  try { saveToStorage(SD_STORAGE_KEY, sdRawRows); } catch(e) {}
+  saveToStorage(SD_META_KEY, {
+    lastFile: filename,
+    lastUpdate: new Date().toLocaleString('ko-KR',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}),
+    totalRows: sdRawRows.length
+  });
+
+  // UI 업데이트
+  const statusId = source==='쿠팡'?'coupangFileStatus':'adminFileStatus';
+  const statusEl = document.getElementById(statusId);
+  if(statusEl) statusEl.textContent = `✅ ${newRows.length}행 반영됨`;
+
+  const metaEl = document.getElementById('sdLastUpdate');
+  if(metaEl) metaEl.textContent = `마지막 업로드: ${filename} · ${newRows.length}행 · ${new Date().toLocaleString('ko-KR',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'})}`;
+
+  updateSDFilters();
+  renderSDTable();
+  showToast(`✅ ${filename} 반영 완료 — ${newRows.length}개 행`);
+}
+
+// ── 필터 셀렉트 업데이트 ──
+function updateSDFilters() {
+  const dates    = [...new Set(sdRawRows.map(r=>r.date))].sort().reverse();
+  const channels = [...new Set(sdRawRows.map(r=>r.channel))].sort();
+
+  const dateSel = document.getElementById('sdDateSelect');
+  if(dateSel) {
+    dateSel.innerHTML = '<option value="all">전체 날짜</option>' +
+      dates.map(d=>`<option value="${d}">${d}</option>`).join('');
+  }
+  const chSel = document.getElementById('sdChannelSelect');
+  if(chSel) {
+    chSel.innerHTML = '<option value="all">전체 채널</option>' +
+      channels.map(c=>`<option value="${c}">${c}</option>`).join('');
+  }
+}
+
+// ── 필터 버튼 ──
+function setSDFilter(type) {
+  sdFilter = type;
+  ['All','Issue','Top'].forEach(t => {
+    const btn = document.getElementById('sdF'+t);
+    if(btn) { btn.style.background = t.toLowerCase()===type?'var(--navy)':'var(--surface)'; btn.style.color = t.toLowerCase()===type?'#fff':'var(--t3)'; }
+  });
+  renderSDTable();
+}
+
+// ── 피벗 테이블 렌더링 ──
+function renderSDTable() {
+  if(sdRawRows.length === 0) return;
+
+  const dateFilter = document.getElementById('sdDateSelect')?.value || 'all';
+  const chFilter   = document.getElementById('sdChannelSelect')?.value || 'all';
+  const search     = (document.getElementById('sdSearch')?.value || '').toLowerCase();
+
+  // 필터 적용
+  let rows = sdRawRows.filter(r => {
+    if(dateFilter !== 'all' && r.date !== dateFilter) return false;
+    if(chFilter   !== 'all' && r.channel !== chFilter) return false;
+    if(search && !r.sku.toLowerCase().includes(search)) return false;
+    return true;
+  });
+
+  // SKU별 집계
+  const skuMap = {};
+  rows.forEach(r => {
+    if(!skuMap[r.sku]) skuMap[r.sku] = { sku: r.sku, channels: {}, totalQty: 0, totalRev: 0, dates: {} };
+    skuMap[r.sku].totalQty += r.qty;
+    skuMap[r.sku].totalRev += r.rev;
+    skuMap[r.sku].channels[r.channel] = (skuMap[r.sku].channels[r.channel]||0) + r.qty;
+    if(!skuMap[r.sku].dates[r.date]) skuMap[r.sku].dates[r.date] = 0;
+    skuMap[r.sku].dates[r.date] += r.qty;
+  });
+
+  // 날짜 목록 (최근 7일 우선)
+  const allDates = [...new Set(rows.map(r=>r.date))].sort().reverse().slice(0,7).reverse();
+  // 채널 목록
+  const allChannels = [...new Set(rows.map(r=>r.channel))].sort();
+
+  // 이슈 판단 (전날 대비 50% 이상 감소 or 판매 0)
+  const allSkus = Object.values(skuMap);
+  allSkus.forEach(s => {
+    s.isIssue = s.totalQty === 0;
+    if(allDates.length >= 2) {
+      const today = allDates[allDates.length-1];
+      const yest  = allDates[allDates.length-2];
+      const todayQty = s.dates[today] || 0;
+      const yestQty  = s.dates[yest]  || 0;
+      if(yestQty > 0 && todayQty < yestQty * 0.5) s.isIssue = true;
+    }
+  });
+
+  // 필터 적용
+  let filtered = allSkus;
+  if(sdFilter === 'issue') filtered = allSkus.filter(s=>s.isIssue);
+  if(sdFilter === 'top')   filtered = allSkus.sort((a,b)=>b.totalQty-a.totalQty).slice(0,20);
+
+  // KPI 업데이트
+  const totalQty = allSkus.reduce((s,r)=>s+r.totalQty, 0);
+  const totalRev = rows.reduce((s,r)=>s+r.rev, 0);
+  const issueCnt = allSkus.filter(s=>s.isIssue).length;
+  const chCnt    = allChannels.length;
+  const upd = (id,html) => { const el=document.getElementById(id); if(el) el.innerHTML=html; };
+  upd('sd-total-qty',  `${totalQty.toLocaleString()}<span class="kpi-unit">개</span>`);
+  upd('sd-total-rev',  `${Math.round(totalRev/10000).toLocaleString()}<span class="kpi-unit">만원</span>`);
+  upd('sd-issue-cnt',  `${issueCnt}<span class="kpi-unit">개</span>`);
+  upd('sd-channel-cnt',`${chCnt}<span class="kpi-unit">개</span>`);
+  upd('sd-total-sub',  `${allDates.length>0?allDates[allDates.length-1]+' 기준':''}`);
+  upd('sd-issue-sub',  `전체 ${allSkus.length}개 중`);
+  upd('sd-channel-sub',allChannels.join(' · ').slice(0,30));
+
+  // 테이블 헤더 (SKU | 채널들 | 날짜들 | 합계)
+  const thead = document.getElementById('sdThead');
+  if(thead) thead.innerHTML = `<tr>
+    <th style="min-width:180px;position:sticky;left:0;background:var(--surface2);z-index:1">SKU / 품목명</th>
+    ${allChannels.map(ch=>`<th style="text-align:right;min-width:70px">${ch}</th>`).join('')}
+    ${allDates.map(d=>`<th style="text-align:right;min-width:65px;color:var(--blue)">${d.slice(5)}</th>`).join('')}
+    <th style="text-align:right;min-width:70px;background:rgba(0,45,94,0.05);font-weight:800">합계</th>
+    <th style="min-width:50px">상태</th>
+  </tr>`;
+
+  // 합계 행 먼저 계산
+  const colSums = {};
+  allChannels.forEach(ch => { colSums[ch] = allSkus.reduce((s,r)=>s+(r.channels[ch]||0),0); });
+  allDates.forEach(d => { colSums[d] = allSkus.reduce((s,r)=>s+(r.dates[d]||0),0); });
+
+  // 테이블 바디
+  const tbody = document.getElementById('sdTbody');
+  if(!tbody) return;
+  if(filtered.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="${2+allChannels.length+allDates.length}" style="padding:24px;text-align:center;color:var(--t3)">검색 결과가 없습니다</td></tr>`;
+  } else {
+    tbody.innerHTML = filtered.map(s => {
+      const issueBadge = s.isIssue
+        ? `<span style="font-size:10px;padding:2px 6px;border-radius:4px;background:rgba(255,75,75,0.1);color:var(--red);font-weight:700">⚠ 이슈</span>`
+        : `<span style="font-size:10px;padding:2px 6px;border-radius:4px;background:rgba(17,202,160,0.1);color:var(--teal);font-weight:700">정상</span>`;
+      return `<tr style="${s.isIssue?'background:rgba(255,75,75,0.03)':''}">
+        <td style="position:sticky;left:0;background:${s.isIssue?'rgba(255,75,75,0.04)':'var(--surface)'};font-size:12px;font-weight:600;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${s.sku}">${s.sku}</td>
+        ${allChannels.map(ch=>{
+          const v = s.channels[ch]||0;
+          return `<td class="td-right" style="font-family:Montserrat,sans-serif;font-size:12px;color:${v>0?'var(--t1)':'var(--t3)'}">${v>0?v.toLocaleString():'-'}</td>`;
+        }).join('')}
+        ${allDates.map(d=>{
+          const v = s.dates[d]||0;
+          const prev = allDates.indexOf(d)>0 ? (s.dates[allDates[allDates.indexOf(d)-1]]||0) : null;
+          const trend = prev!==null && prev>0 ? (v-prev)/prev : null;
+          const trendStr = trend!==null ? `<span style="font-size:9px;color:${trend<-0.3?'var(--red)':trend>0.3?'var(--teal)':'var(--t3)'}">${trend>0?'▲':'▼'}${Math.abs(Math.round(trend*100))}%</span>` : '';
+          return `<td class="td-right" style="font-family:Montserrat,sans-serif;font-size:12px">${v>0?v.toLocaleString():''} ${trendStr}</td>`;
+        }).join('')}
+        <td class="td-right" style="font-family:Montserrat,sans-serif;font-weight:800;background:rgba(0,45,94,0.04);color:${s.totalQty>0?'var(--blue)':'var(--t3)'}">${s.totalQty>0?s.totalQty.toLocaleString():'-'}</td>
+        <td>${issueBadge}</td>
+      </tr>`;
+    }).join('') +
+    // 합계 행
+    `<tr style="background:var(--surface2);border-top:2px solid var(--border);font-weight:700">
+      <td style="position:sticky;left:0;background:var(--surface2)"><span style="font-size:11px;background:var(--navy);color:#fff;padding:2px 8px;border-radius:4px">합계</span></td>
+      ${allChannels.map(ch=>`<td class="td-right" style="font-family:Montserrat,sans-serif;font-size:12px;color:var(--blue)">${(colSums[ch]||0).toLocaleString()}</td>`).join('')}
+      ${allDates.map(d=>`<td class="td-right" style="font-family:Montserrat,sans-serif;font-size:12px;color:var(--blue)">${(colSums[d]||0).toLocaleString()}</td>`).join('')}
+      <td class="td-right" style="font-family:Montserrat,sans-serif;font-weight:800;color:var(--navy)">${totalQty.toLocaleString()}</td>
+      <td></td>
+    </tr>`;
+  }
+
+  // 행 카운트
+  const countEl = document.getElementById('sdRowCount');
+  if(countEl) countEl.textContent = `${filtered.length}개 SKU 표시 중`;
+
+  // 테이블 표시
+  document.getElementById('sdEmptyMsg').style.display = 'none';
+  document.getElementById('sdTableWrap').style.display = 'block';
+}
+
+// ── 엑셀 다운로드 (피벗 형태) ──
+function exportSalesDataExcel() {
+  if(sdRawRows.length === 0) { showToast('❌ 데이터를 먼저 업로드해주세요'); return; }
+
+  const allDates = [...new Set(sdRawRows.map(r=>r.date))].sort();
+  const skuMap = {};
+  sdRawRows.forEach(r => {
+    if(!skuMap[r.sku]) skuMap[r.sku] = { sku:r.sku, dates:{}, totalQty:0 };
+    if(!skuMap[r.sku].dates[r.date]) skuMap[r.sku].dates[r.date] = 0;
+    skuMap[r.sku].dates[r.date] += r.qty;
+    skuMap[r.sku].totalQty += r.qty;
+  });
+
+  // 헤더 행
+  const header = ['품목명', ...allDates, '합계'];
+  const dataRows = Object.values(skuMap)
+    .sort((a,b)=>b.totalQty-a.totalQty)
+    .map(s => [s.sku, ...allDates.map(d=>s.dates[d]||0), s.totalQty]);
+
+  // 합계 행
+  const sumRow = ['합계', ...allDates.map(d=>sdRawRows.filter(r=>r.date===d).reduce((s,r)=>s+r.qty,0)),
+    sdRawRows.reduce((s,r)=>s+r.qty,0)];
+
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet([header, ...dataRows, sumRow]);
+  XLSX.utils.book_append_sheet(wb, ws, '판매수량피벗');
+
+  // 채널별 시트
+  const channels = [...new Set(sdRawRows.map(r=>r.channel))];
+  channels.forEach(ch => {
+    const chRows = sdRawRows.filter(r=>r.channel===ch);
+    const chSkuMap = {};
+    chRows.forEach(r => {
+      if(!chSkuMap[r.sku]) chSkuMap[r.sku] = { sku:r.sku, dates:{}, totalQty:0 };
+      chSkuMap[r.sku].dates[r.date] = (chSkuMap[r.sku].dates[r.date]||0) + r.qty;
+      chSkuMap[r.sku].totalQty += r.qty;
+    });
+    const chData = Object.values(chSkuMap).map(s => [s.sku, ...allDates.map(d=>s.dates[d]||0), s.totalQty]);
+    const chWs = XLSX.utils.aoa_to_sheet([['품목명',...allDates,'합계'], ...chData]);
+    XLSX.utils.book_append_sheet(wb, chWs, ch.slice(0,31));
+  });
+
+  const now = new Date().toLocaleDateString('ko-KR',{year:'numeric',month:'2-digit',day:'2-digit'}).replace(/\. /g,'-').replace('.','');
+  XLSX.writeFile(wb, `멜리언스_판매수량피벗_${now}.xlsx`);
+  showToast('✅ 엑셀 다운로드 완료 (판매수량피벗 + 채널별 시트)');
+}
+
+// ── 페이지 진입 시 초기화 ──
+function initSalesDataPage() {
+  const saved = loadFromStorage(SD_STORAGE_KEY);
+  if(saved && saved.length > 0) {
+    sdRawRows = saved;
+    updateSDFilters();
+    renderSDTable();
+    const meta = loadFromStorage(SD_META_KEY);
+    const metaEl = document.getElementById('sdLastUpdate');
+    if(metaEl && meta) metaEl.textContent = `마지막 업로드: ${meta.lastFile} · ${meta.lastUpdate}`;
+    const statusEls = ['coupangFileStatus','adminFileStatus'];
+    statusEls.forEach(id => {
+      const el = document.getElementById(id);
+      if(el && !el.textContent) el.textContent = '이전 데이터 복구됨';
+    });
+  }
 }
 
 // ── INIT ──
