@@ -5032,16 +5032,16 @@ function mergeSDRows(newRows, source, filename) {
   const statusId = source==='쿠팡'?'coupangFileStatus':'adminFileStatus';
   const statusEl = document.getElementById(statusId);
 
-  // 날짜 범위 계산
+  // 날짜 범위 계산 (화면 표시용)
   const newDates = [...new Set(newRows.map(r=>r.date))].sort();
-  dateRange = newDates.length === 1
+  const displayRange = newDates.length === 1
     ? newDates[0]
     : `${newDates[0]} ~ ${newDates[newDates.length-1]}`;
 
-  if(statusEl) statusEl.textContent = `✅ ${newRows.length}행 · ${dateRange}`;
+  if(statusEl) statusEl.textContent = `✅ ${newRows.length}행 · ${displayRange}`;
 
   const metaEl = document.getElementById('sdLastUpdate');
-  if(metaEl) metaEl.textContent = `마지막 업로드: ${filename} · ${newRows.length}행 · 기간: ${dateRange}`;
+  if(metaEl) metaEl.textContent = `마지막 업로드: ${filename} · ${newRows.length}행 · 기간: ${displayRange}`;
 
   updateSDFilters();
   // 가장 최근 날짜로 자동 선택
@@ -5058,7 +5058,7 @@ function mergeSDRows(newRows, source, filename) {
   // 이커머스 매출 + 홈 KPI 자동 동기화
   setTimeout(() => syncRevenueFromSD(), 100);
   renderFileRegistry();
-  showToast(`✅ ${filename} 반영 완료 — ${newRows.length}개 행 · ${dateRange}`);
+  showToast(`✅ ${filename} 반영 완료 — ${newRows.length}개 행 · ${displayRange}`);
 }
 
 // ── sdRawRows → 이커머스 매출 + 홈 KPI 동기화 ──
