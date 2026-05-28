@@ -5295,228 +5295,216 @@ function setSDSort(type) {
 
 // ── 피벗 테이블 렌더링 ──
 function renderSDTable() {
-  if(sdRawRows.length === 0) return;
+  if(!sdRawRows.length) return;
 
-  const dateFilter = document.getElementById('sdDateSelect')?.value || 'all';
+  // ── 1. 필터 값 읽기 ──────────────────────────────────
+  const dateFilter = document.getElementById('sdDateSelect')?.value  || 'all';
   const chFilter   = document.getElementById('sdChannelSelect')?.value || 'all';
-  const search     = (document.getElementById('sdSearch')?.value || '').toLowerCase();
+  const search     = (document.getElementById('sdSearch')?.value || '').toLowerCase().trim();
 
-  // 필터 적용
-  let rows = sdRawRows.filter(r => {
-    if(dateFilter !== 'all' && r.date !== dateFilter) return false;
-    if(chFilter   !== 'all' && r.channel !== chFilter) return false;
-    if(search && !r.sku.toLowerCase().includes(search)) return false;
+  // ── 2. sdRawRows 필터링 ──────────────────────────────
+  const validDateRe = /^20[2-9]\d-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\d|3[01])$/;
+  const rows = sdRawRows.filter(r => {
+    if(!validDateRe.test(r.date))           return false;
+    if(dateFilter !== 'all' && r.date    !== dateFilter) return false;
+    if(chFilter   !== 'all' && r.channel !== chFilter)   return false;
+    if(search && !r.sku.toLowerCase().includes(search))  return false;
     return true;
   });
 
-  // SKU별 집계
-  const skuMap = {};
-  rows.forEach(r => {
-    if(!skuMap[r.sku]) skuMap[r.sku] = { sku: r.sku, channels: {}, totalQty: 0, totalRev: 0, dates: {} };
-    skuMap[r.sku].totalQty += r.qty;
-    skuMap[r.sku].totalRev += r.rev;
-    skuMap[r.sku].channels[r.channel] = (skuMap[r.sku].channels[r.channel]||0) + r.qty;
-    if(!skuMap[r.sku].dates[r.date]) skuMap[r.sku].dates[r.date] = 0;
-    skuMap[r.sku].dates[r.date] += r.qty;
-  });
-
-  // 날짜 목록 (유효한 날짜만, 최근 7일)
-  const validDateRe = /^20[2-9]\d-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\d|3[01])$/;
-  const allDates = [...new Set(rows.map(r=>r.date).filter(d=>validDateRe.test(d)))].sort().reverse().slice(0,7).reverse();
-  // 채널 목록 - 정해진 순서로 정렬
-  // 채널 표시 순서: 쿠팡 → 자사몰 → 스마트스토어 → 외부채널(나머지)
+  // ── 3. 채널/날짜 목록 ────────────────────────────────
   const CH_ORDER = ['쿠팡','자사몰','스마트스토어','전체(판매수량)'];
   const rawChannels = [...new Set(rows.map(r=>r.channel))];
   const allChannels = [
-    ...CH_ORDER.filter(c => rawChannels.includes(c)),
-    ...rawChannels.filter(c => !CH_ORDER.includes(c)).sort()
+    ...CH_ORDER.filter(ch => rawChannels.includes(ch)),
+    ...rawChannels.filter(ch => !CH_ORDER.includes(ch)).sort((a,b)=>a.localeCompare(b,'ko'))
   ];
+  const allDates = [...new Set(rows.map(r=>r.date))].sort().slice(-7); // 최근 7일
 
-  // 이슈 판단 (전날 대비 50% 이상 감소 or 판매 0)
-  const allSkus = Object.values(skuMap);
-  allSkus.forEach(s => {
-    s.isIssue = s.totalQty === 0;
-    if(allDates.length >= 2) {
-      const today = allDates[allDates.length-1];
-      const yest  = allDates[allDates.length-2];
-      const todayQty = s.dates[today] || 0;
-      const yestQty  = s.dates[yest]  || 0;
-      if(yestQty > 0 && todayQty < yestQty * 0.5) s.isIssue = true;
-    }
-  });
+  // ── 4. KPI 집계 ('전체(판매수량)' 채널은 분리) ────────
+  const mainRows   = rows.filter(r => r.channel !== '전체(판매수량)');
+  const mainTotal  = mainRows.reduce((s,r)=>s+r.qty, 0);
+  const sdFileQty  = rows.filter(r => r.channel === '전체(판매수량)').reduce((s,r)=>s+r.qty, 0);
 
-  // 필터 적용
-  let filtered = [...allSkus];
-  if(sdFilter === 'issue') filtered = filtered.filter(s=>s.isIssue);
-  if(sdFilter === 'top')   filtered = filtered.sort((a,b)=>b.totalQty-a.totalQty).slice(0,20);
-
-  // 정렬 적용
-  if(sdSort === 'desc') filtered.sort((a,b) => b.totalQty - a.totalQty);
-  else if(sdSort === 'asc') filtered.sort((a,b) => a.totalQty - b.totalQty);
-  else if(sdSort === 'name') filtered.sort((a,b) => a.sku.localeCompare(b.sku, 'ko'));
-
-  // KPI 업데이트
-  const totalQty = mainRows.reduce((s,r)=>s+r.qty, 0) || rows.reduce((s,r)=>s+r.qty,0);
-  const totalRev = rows.reduce((s,r)=>s+r.rev, 0);
-  const issueCnt = allSkus.filter(s=>s.isIssue).length;
-  const chCnt    = allChannels.length;
-  const upd = (id,html) => { const el=document.getElementById(id); if(el) el.innerHTML=html; };
-  // 채널별 집계
-  // KPI: rows(필터 적용된 sdRawRows)에서 직접 채널별 합산
-  // '전체(판매수량)' 채널은 판매수량 파일로 채널 구분 없음 → KPI에서 제외 (별도 표시)
-  const mainRows = rows.filter(r => r.channel !== '전체(판매수량)');
-  const sumCh = (chName) => mainRows.filter(r=>r.channel===chName).reduce((s,r)=>s+r.qty,0);
+  const sumCh = ch => mainRows.filter(r=>r.channel===ch).reduce((s,r)=>s+r.qty, 0);
   const coupangQty = sumCh('쿠팡');
   const selfQty    = sumCh('자사몰');
   const ssQty      = sumCh('스마트스토어');
-  const mainTotal  = mainRows.reduce((s,r)=>s+r.qty,0);
   const extQty     = mainTotal - coupangQty - selfQty - ssQty;
-  // 판매수량 파일 전체
-  const sdQty      = rows.filter(r=>r.channel==='전체(판매수량)').reduce((s,r)=>s+r.qty,0);
+  const pct        = v => mainTotal > 0 ? Math.round(v/mainTotal*100) : 0;
 
-  // 날짜 기준 텍스트 (파일명 숫자 제외, 날짜만)
-  // dateLabel (이미 validDateRe로 필터된 allDates 기준)
-  const dateLabel = allDates.length > 0
-    ? (allDates[0] + (allDates.length>1 ? ` ~ ${allDates[allDates.length-1]}` : ''))
-    : '데이터 없음';
+  // ── 5. SKU별 집계 ────────────────────────────────────
+  const skuMap = {};
+  rows.forEach(r => {
+    if(!skuMap[r.sku]) skuMap[r.sku] = {
+      sku:r.sku, channels:{}, dates:{}, totalQty:0, totalRev:0, isIssue:false
+    };
+    const s = skuMap[r.sku];
+    s.totalQty += r.qty;
+    s.totalRev += r.rev;
+    s.channels[r.channel] = (s.channels[r.channel]||0) + r.qty;
+    s.dates[r.date]        = (s.dates[r.date]||0)        + r.qty;
+  });
+  const allSkus = Object.values(skuMap);
 
-  upd('sd-total-qty',  totalQty.toLocaleString());
-  const rangeStr = allDates.length===0 ? '데이터 없음'
-    : allDates.length===1 ? allDates[0]+' 기준'
-    : allDates[0]+' ~ '+allDates[allDates.length-1]+' ('+allDates.length+'일)';
-  upd('sd-total-sub', rangeStr);
-  upd('sd-issue-info', issueCnt>0 ? `⚠ 이슈 ${issueCnt}개 / ${allSkus.length}개 SKU` : `${allSkus.length}개 SKU`);
+  // 이슈 판단 (당일 0 OR 전날 대비 50% 이상 감소)
+  allSkus.forEach(s => {
+    s.isIssue = s.totalQty === 0;
+    if(allDates.length >= 2) {
+      const last  = allDates[allDates.length-1];
+      const prev  = allDates[allDates.length-2];
+      if((s.dates[prev]||0) > 0 && (s.dates[last]||0) < (s.dates[prev]||0)*0.5) s.isIssue = true;
+    }
+  });
+  const issueCnt = allSkus.filter(s=>s.isIssue).length;
 
-  // 채널별 KPI
-  const fmtKpi = (v) => `${v.toLocaleString()}<span class="kpi-unit">개</span>`;
-  // 매출 데이터 (sdRawRows 기반)
-  const getRevByGroup = (grp) => allSkus.reduce((s,sk) => s + Object.entries(sk.channels)
-    .filter(([ch]) => grp.some(g=>ch===g)).reduce((ss,[,v])=>ss+v,0) * 0, 0); // 수량 기준
-  const pct = (v) => mainTotal>0 ? Math.round(v/mainTotal*100) : 0;
-  // 카드 서브텍스트: 비율 + 수량 + 날짜 기준
-  const dateLabel2 = allDates.length>0
-    ? (allDates.length===1 ? allDates[0].slice(5) : allDates[0].slice(5)+'~'+allDates[allDates.length-1].slice(5))
+  // ── 6. 정렬·필터 ─────────────────────────────────────
+  let filtered = [...allSkus];
+  if(sdFilter === 'issue') filtered = filtered.filter(s=>s.isIssue);
+  if(sdFilter === 'top')   filtered = filtered.sort((a,b)=>b.totalQty-a.totalQty).slice(0,20);
+  if(sdSort === 'desc')    filtered.sort((a,b)=>b.totalQty-a.totalQty);
+  else if(sdSort === 'asc')  filtered.sort((a,b)=>a.totalQty-b.totalQty);
+  else if(sdSort === 'name') filtered.sort((a,b)=>a.sku.localeCompare(b.sku,'ko'));
+
+  // ── 7. DOM 헬퍼 ──────────────────────────────────────
+  const $ = id => document.getElementById(id);
+  const upd = (id, html) => { const el=$(id); if(el) el.innerHTML = html; };
+  const fmtN = v => Number(v).toLocaleString();
+  const fmtKpi = v => `${fmtN(v)}<span class="kpi-unit">개</span>`;
+
+  // ── 8. 날짜 범위 텍스트 ──────────────────────────────
+  const dateRange = allDates.length === 0 ? '데이터 없음'
+    : allDates.length === 1 ? allDates[0] + ' 기준'
+    : allDates[0] + ' ~ ' + allDates[allDates.length-1] + ' (' + allDates.length + '일)';
+  const dateBadge = allDates.length > 0
+    ? `<span style="font-size:9px;color:var(--t3);margin-left:4px">${allDates[0].slice(5)}~${allDates[allDates.length-1].slice(5)}</span>`
     : '';
-  const fmtSub = (qty, grpLabel) => qty>0
-    ? `${pct(qty)}% · ${qty.toLocaleString()}개${dateLabel2?' <span style="font-size:9px;color:var(--t3)">'+dateLabel2+'</span>':''}`
+  const fmtSub = (qty) => qty > 0
+    ? `${pct(qty)}% · ${fmtN(qty)}개${dateBadge}`
     : '데이터 없음';
 
-  upd('sd-kpi-self',        fmtKpi(selfQty));
-  upd('sd-kpi-self-sub',    fmtSub(selfQty,'자사몰'));
-  upd('sd-kpi-ss',          fmtKpi(ssQty));
-  upd('sd-kpi-ss-sub',      fmtSub(ssQty,'스마트스토어'));
+  // ── 9. KPI 카드 업데이트 ─────────────────────────────
+  upd('sd-total-qty',  fmtN(mainTotal || sdFileQty));
+  upd('sd-total-sub',  dateRange);
+  upd('sd-issue-info', issueCnt > 0 ? `⚠ 이슈 ${issueCnt}개 / ${allSkus.length}개 SKU` : `${allSkus.length}개 SKU`);
+
   upd('sd-kpi-coupang',     fmtKpi(coupangQty));
-  upd('sd-kpi-coupang-sub', fmtSub(coupangQty,'쿠팡'));
-  upd('sd-kpi-ext',         fmtKpi(Math.max(0,extQty)));
-  upd('sd-kpi-ext-sub', extQty>0
-    ? `${pct(extQty)}% · ${extQty.toLocaleString()}개${dateLabel2?' <span style="font-size:9px;color:var(--t3)">'+dateLabel2+'</span>':''}`
-    : '데이터 없음');
+  upd('sd-kpi-coupang-sub', fmtSub(coupangQty));
+  upd('sd-kpi-self',        fmtKpi(selfQty));
+  upd('sd-kpi-self-sub',    fmtSub(selfQty));
+  upd('sd-kpi-ss',          fmtKpi(ssQty));
+  upd('sd-kpi-ss-sub',      fmtSub(ssQty));
+  upd('sd-kpi-ext',         fmtKpi(Math.max(0, extQty)));
+  upd('sd-kpi-ext-sub',     extQty > 0 ? fmtSub(extQty) : '데이터 없음');
 
-  // 이슈 뱃지 토글
-  const issueBadgeEl = document.getElementById('sd-issue-badge');
-  if(issueBadgeEl) issueBadgeEl.style.display = issueCnt>0?'inline':'none';
-  if(issueBadgeEl) issueBadgeEl.textContent = `⚠ ${issueCnt}이슈`;
+  const issueBadgeEl = $('sd-issue-badge');
+  if(issueBadgeEl) {
+    issueBadgeEl.style.display = issueCnt > 0 ? 'inline' : 'none';
+    issueBadgeEl.textContent   = `⚠ ${issueCnt}이슈`;
+  }
 
-  // 테이블 헤더 (SKU | 채널들 | 날짜들 | 합계)
-  const thead = document.getElementById('sdThead');
-  const sortIcon = sdSort==='desc'?' ↓':sdSort==='asc'?' ↑':'';
-  const DOW = ['일','월','화','수','목','금','토'];
-  const chColor = ch => {
-    if(ch==='자사몰') return 'color:var(--teal)';
-    if(ch==='스마트스토어') return 'color:#03C75A';
-    if(ch==='쿠팡') return 'color:#E8140C';
-    if(ch==='전체(판매수량)') return 'color:var(--blue)';
-    return 'color:var(--t2)';
+  // ── 10. 테이블 헤더 ───────────────────────────────────
+  const thead   = $('sdThead');
+  const sortIcon = sdSort==='desc'?' ↓' : sdSort==='asc'?' ↑' : '';
+  const DOW      = ['일','월','화','수','목','금','토'];
+  const CH_COLOR = {
+    '자사몰':'var(--teal)', '스마트스토어':'#03C75A',
+    '쿠팡':'#E8140C',      '전체(판매수량)':'var(--blue)'
   };
-  const chShort = ch => {
-    if(ch==='스마트스토어') return 'SS';
-    if(ch==='쿠팡로켓배송(송장)') return '쿠팡🚀';
-    if(ch==='전체(판매수량)') return '판매수량';
-    return ch;
-  };
+  const CH_LABEL = {'스마트스토어':'SS','전체(판매수량)':'판매수량'};
+
   if(thead) thead.innerHTML = `<tr>
     <th onclick="setSDSort(sdSort==='name'?'desc':'name')"
-        style="min-width:180px;position:sticky;left:0;background:var(--surface2);z-index:2;cursor:pointer;border-right:2px solid var(--border)"
+        style="min-width:180px;position:sticky;left:0;background:var(--surface2);z-index:2;cursor:pointer;border-right:2px solid var(--border);padding:8px 10px"
         title="클릭: 가나다 정렬">
-      <div style="display:flex;align-items:center;gap:4px">
-        <span>SKU / 품목명</span>
-        <span style="font-size:9px;color:var(--t3)">${sdSort==='name'?'↑↓':''}</span>
-      </div>
+      SKU / 품목명${sdSort==='name'?' <span style=\"font-size:9px\">↑↓</span>':''}
     </th>
     ${allChannels.map(ch=>`
-      <th style="text-align:right;min-width:64px;font-size:11px;padding:8px 6px;${chColor(ch)};font-weight:700">${chShort(ch)}</th>
-    `).join('')}
+      <th style="text-align:right;min-width:60px;font-size:11px;padding:8px 6px;color:${CH_COLOR[ch]||'var(--t2)'};font-weight:700">
+        ${CH_LABEL[ch]||ch}
+      </th>`).join('')}
     ${allDates.map(d=>{
-      const dt = new Date(d+'T00:00:00');
+      const dt  = new Date(d+'T00:00:00');
       const dow = DOW[dt.getDay()];
-      const isWeekend = dt.getDay()===0||dt.getDay()===6;
-      return `<th style="text-align:right;min-width:52px;font-size:10px;padding:6px 4px;color:${isWeekend?'var(--red)':'var(--blue)'};font-weight:600">
-        <div>${d.slice(5)}</div>
-        <div style="font-size:9px;opacity:0.7">${dow}</div>
+      const wknd = dt.getDay()===0||dt.getDay()===6;
+      return `<th style="text-align:right;min-width:50px;font-size:10px;padding:6px 4px;color:${wknd?'var(--red)':'var(--blue)'};font-weight:600">
+        <div>${d.slice(5)}</div><div style="font-size:9px;opacity:.7">${dow}</div>
       </th>`;
     }).join('')}
     <th onclick="setSDSort(sdSort==='desc'?'asc':'desc')"
-        style="text-align:right;min-width:64px;background:rgba(0,45,94,0.06);font-weight:800;cursor:pointer;border-left:1px solid var(--border)"
+        style="text-align:right;min-width:62px;background:rgba(0,45,94,.06);font-weight:800;cursor:pointer;border-left:1px solid var(--border);padding:8px 6px"
         title="클릭: 합계 정렬">합계${sortIcon}</th>
     <th style="min-width:44px;text-align:center;font-size:11px">상태</th>
   </tr>`;
 
-  // 합계 행 먼저 계산
-  const colSums = {};
-  allChannels.forEach(ch => { colSums[ch] = allSkus.reduce((s,r)=>s+(r.channels[ch]||0),0); });
-  allDates.forEach(d => { colSums[d] = allSkus.reduce((s,r)=>s+(r.dates[d]||0),0); });
+  // ── 11. 합계 행 사전 계산 ─────────────────────────────
+  const colTotals = {};
+  allChannels.forEach(ch => { colTotals[ch] = rows.filter(r=>r.channel===ch).reduce((s,r)=>s+r.qty,0); });
+  allDates.forEach(d    => { colTotals[d]  = rows.filter(r=>r.date===d).reduce((s,r)=>s+r.qty,0); });
 
-  // 테이블 바디
-  const tbody = document.getElementById('sdTbody');
+  // ── 12. 테이블 바디 ───────────────────────────────────
+  const tbody = $('sdTbody');
   if(!tbody) return;
+
   if(filtered.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="${2+allChannels.length+allDates.length}" style="padding:24px;text-align:center;color:var(--t3)">검색 결과가 없습니다</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="${2+allChannels.length+allDates.length}"
+      style="padding:24px;text-align:center;color:var(--t3)">검색 결과가 없습니다</td></tr>`;
   } else {
-    tbody.innerHTML = filtered.map((s,ri) => {
-      const isIssue = s.isIssue;
-      const rowBg = isIssue ? 'background:rgba(255,75,75,0.03)' : (ri%2===1 ? 'background:var(--surface2)' : '');
-      const skuBg = isIssue ? 'rgba(255,75,75,0.04)' : (ri%2===1 ? 'var(--surface2)' : 'var(--surface)');
-      const statusBadge = isIssue
-        ? `<span style="font-size:10px;padding:2px 5px;border-radius:4px;background:rgba(255,75,75,0.12);color:var(--red);font-weight:700;white-space:nowrap">⚠ 이슈</span>`
-        : `<span style="font-size:10px;padding:2px 5px;border-radius:4px;background:rgba(17,202,160,0.1);color:var(--teal);font-weight:700">정상</span>`;
-      return `<tr style="${rowBg};border-bottom:1px solid var(--border)">
-        <td class="sd-sku-cell" style="position:sticky;left:0;background:${skuBg};font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:180px;max-width:300px;cursor:default;border-right:2px solid var(--border);padding:8px 10px" title="${s.sku}">${s.sku}</td>
-        ${allChannels.map(ch=>{
-          const v = s.channels[ch]||0;
-          const chBg = ch==='자사몰'&&v>0 ? 'rgba(17,202,160,0.06)' : ch==='쿠팡'&&v>0 ? 'rgba(232,20,12,0.04)' : ch==='스마트스토어'&&v>0 ? 'rgba(3,199,90,0.05)' : '';
-          return `<td class="td-right" style="font-family:Montserrat,sans-serif;font-size:12px;padding:8px 6px;${chBg};color:${v>0?'var(--t1)':'var(--t3)'}">
-            ${v>0?`<strong>${v.toLocaleString()}</strong>`:'-'}
-          </td>`;
-        }).join('')}
-        ${allDates.map((d,di)=>{
-          const v = s.dates[d]||0;
-          const prev = di>0 ? (s.dates[allDates[di-1]]||0) : null;
-          const drop = prev!==null && prev>0 && v < prev*0.5;
-          return `<td class="td-right" style="font-family:Montserrat,sans-serif;font-size:11px;padding:6px 4px;color:${drop?'var(--red)':v>0?'var(--t1)':'var(--t3)'}">
-            ${v>0?v.toLocaleString():'-'}${drop?'<span style="font-size:8px"> ▼</span>':''}
-          </td>`;
-        }).join('')}
-        <td class="td-right" style="font-family:Montserrat,sans-serif;font-weight:800;font-size:13px;padding:8px 8px;background:rgba(0,45,94,0.05);color:${s.totalQty>0?'var(--navy)':'var(--t3)'};border-left:1px solid var(--border)">${s.totalQty>0?s.totalQty.toLocaleString():'-'}</td>
-        <td style="text-align:center;padding:6px 4px">${statusBadge}</td>
+    const rows_html = filtered.map((s,ri) => {
+      const bg    = s.isIssue ? 'rgba(255,75,75,.03)' : ri%2===1 ? 'var(--surface2)' : '';
+      const stickyBg = s.isIssue ? 'rgba(255,75,75,.04)' : ri%2===1 ? 'var(--surface2)' : 'var(--surface)';
+      const badge = s.isIssue
+        ? `<span style="font-size:10px;padding:2px 5px;border-radius:4px;background:rgba(255,75,75,.12);color:var(--red);font-weight:700">⚠ 이슈</span>`
+        : `<span style="font-size:10px;padding:2px 5px;border-radius:4px;background:rgba(17,202,160,.1);color:var(--teal);font-weight:700">정상</span>`;
+
+      const chCells = allChannels.map(ch => {
+        const v   = s.channels[ch]||0;
+        const bg2 = ch==='자사몰'&&v>0?'rgba(17,202,160,.06)':ch==='쿠팡'&&v>0?'rgba(232,20,12,.04)':ch==='스마트스토어'&&v>0?'rgba(3,199,90,.05)':'';
+        return `<td class="td-right" style="font-size:12px;padding:8px 6px;${bg2};color:${v>0?'var(--t1)':'var(--t3)'}">
+          ${v>0?`<strong>${fmtN(v)}</strong>`:'-'}</td>`;
+      }).join('');
+
+      const dateCells = allDates.map((d,di) => {
+        const v    = s.dates[d]||0;
+        const prev = di>0 ? (s.dates[allDates[di-1]]||0) : null;
+        const drop = prev!==null && prev>0 && v<prev*0.5;
+        return `<td class="td-right" style="font-size:11px;padding:6px 4px;color:${drop?'var(--red)':v>0?'var(--t1)':'var(--t3)'}">
+          ${v>0?fmtN(v):'-'}${drop?'<span style="font-size:8px"> ▼</span>':''}</td>`;
+      }).join('');
+
+      return `<tr style="background:${bg};border-bottom:1px solid var(--border)">
+        <td class="sd-sku-cell" title="${s.sku}"
+            style="position:sticky;left:0;background:${stickyBg};font-size:12px;font-weight:600;
+                   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+                   min-width:180px;max-width:300px;border-right:2px solid var(--border);padding:8px 10px">
+          ${s.sku}</td>
+        ${chCells}
+        ${dateCells}
+        <td class="td-right" style="font-weight:800;font-size:13px;padding:8px;
+            background:rgba(0,45,94,.05);color:${s.totalQty>0?'var(--navy)':'var(--t3)'};
+            border-left:1px solid var(--border)">${s.totalQty>0?fmtN(s.totalQty):'-'}</td>
+        <td style="text-align:center;padding:6px 4px">${badge}</td>
       </tr>`;
-    }).join('') +
-    // 합계 행
-    `<tr style="background:var(--surface2);border-top:2px solid var(--border);font-weight:700">
-      <td style="position:sticky;left:0;background:var(--surface2)"><span style="font-size:11px;background:var(--navy);color:#fff;padding:2px 8px;border-radius:4px">합계</span></td>
-      ${allChannels.map(ch=>`<td class="td-right" style="font-family:Montserrat,sans-serif;font-size:12px;color:var(--blue)">${(colSums[ch]||0).toLocaleString()}</td>`).join('')}
-      ${allDates.map(d=>`<td class="td-right" style="font-family:Montserrat,sans-serif;font-size:12px;color:var(--blue)">${(colSums[d]||0).toLocaleString()}</td>`).join('')}
-      <td class="td-right" style="font-family:Montserrat,sans-serif;font-weight:800;color:var(--navy)">${totalQty.toLocaleString()}</td>
+    }).join('');
+
+    const sumRow = `<tr style="background:var(--surface2);border-top:2px solid var(--border);font-weight:700">
+      <td style="position:sticky;left:0;background:var(--surface2);padding:8px 10px">
+        <span style="font-size:11px;background:var(--navy);color:#fff;padding:2px 8px;border-radius:4px">합계</span>
+      </td>
+      ${allChannels.map(ch=>`<td class="td-right" style="font-size:12px;color:var(--blue);padding:8px 6px">${fmtN(colTotals[ch]||0)}</td>`).join('')}
+      ${allDates.map(d=>`<td class="td-right" style="font-size:12px;color:var(--blue);padding:6px 4px">${fmtN(colTotals[d]||0)}</td>`).join('')}
+      <td class="td-right" style="font-weight:800;color:var(--navy);border-left:1px solid var(--border);${''}">${fmtN(mainTotal||sdFileQty)}</td>
       <td></td>
     </tr>`;
+
+    tbody.innerHTML = rows_html + sumRow;
   }
 
-  // 행 카운트
-  const countEl = document.getElementById('sdRowCount');
+  // ── 13. 행 카운트 & 테이블 표시 ──────────────────────
+  const countEl = $('sdRowCount');
   if(countEl) countEl.textContent = `${filtered.length}개 SKU 표시 중`;
-
-  // 테이블 표시
-  document.getElementById('sdEmptyMsg').style.display = 'none';
-  document.getElementById('sdTableWrap').style.display = 'block';
+  if($('sdEmptyMsg'))   $('sdEmptyMsg').style.display   = 'none';
+  if($('sdTableWrap'))  $('sdTableWrap').style.display  = 'block';
 }
 
 // ── 엑셀 다운로드 (피벗 형태) ──
