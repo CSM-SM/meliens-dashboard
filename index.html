@@ -1136,7 +1136,18 @@ tbody tr:hover td{background:var(--surface2)}
 
       <!-- KPI 카드 4개 — 채널별 -->
       <div class="grid-4" style="margin-bottom:16px">
-        <!-- 자사몰 -->
+        <!-- 쿠팡 (첫 번째) -->
+        <div class="kpi-card" style="cursor:pointer" onclick="document.getElementById('sdChannelSelect').value='쿠팡';renderSDTable()"
+          onmouseenter="this.style.boxShadow='0 4px 20px rgba(232,20,12,0.15)'" onmouseleave="this.style.boxShadow=''">
+          <div class="kpi-accent" style="background:#E8140C"></div>
+          <div class="kpi-label" style="display:flex;align-items:center;gap:5px">
+            <span style="width:7px;height:7px;border-radius:50%;background:#E8140C;display:inline-block"></span>
+            쿠팡 <span style="font-size:9px;color:var(--t3);margin-left:auto">클릭 필터 →</span>
+          </div>
+          <div class="kpi-value" id="sd-kpi-coupang">--<span class="kpi-unit">개</span></div>
+          <div class="kpi-change neutral" id="sd-kpi-coupang-sub">데이터 없음</div>
+        </div>
+        <!-- 자사몰 (두 번째) -->
         <div class="kpi-card" style="cursor:pointer" onclick="document.getElementById('sdChannelSelect').value='자사몰';renderSDTable()" onmouseenter="this.style.boxShadow='0 4px 20px rgba(17,202,160,0.2)'" onmouseleave="this.style.boxShadow=''">
           <div class="kpi-accent" style="background:var(--teal)"></div>
           <div class="kpi-label" style="display:flex;align-items:center;gap:5px">
@@ -1156,16 +1167,7 @@ tbody tr:hover td{background:var(--surface2)}
           <div class="kpi-value" id="sd-kpi-ss">--<span class="kpi-unit">개</span></div>
           <div class="kpi-change neutral" id="sd-kpi-ss-sub">데이터 없음</div>
         </div>
-        <!-- 쿠팡 -->
-        <div class="kpi-card" style="cursor:pointer" onclick="document.getElementById('sdChannelSelect').value='쿠팡';renderSDTable()" onmouseenter="this.style.boxShadow='0 4px 20px rgba(232,20,12,0.15)'" onmouseleave="this.style.boxShadow=''">
-          <div class="kpi-accent" style="background:#E8140C"></div>
-          <div class="kpi-label" style="display:flex;align-items:center;gap:5px">
-            <span style="width:7px;height:7px;border-radius:50%;background:#E8140C;display:inline-block"></span>
-            쿠팡 <span style="font-size:9px;color:var(--t3);margin-left:auto">클릭 필터 →</span>
-          </div>
-          <div class="kpi-value" id="sd-kpi-coupang">--<span class="kpi-unit">개</span></div>
-          <div class="kpi-change neutral" id="sd-kpi-coupang-sub">데이터 없음</div>
-        </div>
+
         <!-- 외부채널 + 이슈 -->
         <div class="kpi-card" style="cursor:pointer" onclick="setSDFilter(sdFilter==='issue'?'all':'issue')" onmouseenter="this.style.boxShadow='0 4px 20px rgba(108,92,231,0.2)'" onmouseleave="this.style.boxShadow=''">
           <div class="kpi-accent" style="background:var(--purple)"></div>
@@ -4933,19 +4935,26 @@ function parseAdminRows(rows, filename) {
   const firstRow = rows[0] || {};
   const allKeys = Object.keys(firstRow);
 
-  function findKey(candidates) {
-    return allKeys.find(k => candidates.some(c => k.replace(/\s/g,'').toLowerCase().includes(c.replace(/\s/g,'').toLowerCase()))) || '';
+  // 정확한 컬럼명 우선, 부분 매칭 fallback
+  function findKey(exactList, fuzzyList) {
+    const exact = allKeys.find(k => exactList.includes(k.trim()));
+    if(exact) return exact;
+    return allKeys.find(k => (fuzzyList||[]).some(c => k.replace(/\s/g,'').toLowerCase().includes(c.replace(/\s/g,'').toLowerCase()))) || '';
   }
 
-  const chKey   = findKey(['판매처','판매처그룹','채널','channel']);
-  const nameKey = findKey(['공급처상품명','상품명','품목명','itemname']);
-  const optKey  = findKey(['공급처옵션명','옵션명','optionname']);
-  const qtyKey  = findKey(['수량','qty','quantity','판매수량']);
-  const revKey  = findKey(['판매금액','판매가금액','매출','revenue','결제금액']);
-  const costKey = findKey(['원가금액','원가','cost','매입가','공급가금액']);
-  const dateKey = findKey(['주문일','결제일','날짜','date','정산일']);
+  // 판매처그룹(B2B/B2C)과 판매처(실제 채널명) 분리
+  const grpKey  = findKey(['판매처그룹'], ['판매처그룹','salesgroup']);
+  const chKey   = findKey(['판매처'], ['판매처','채널','channel']);
+  const nameKey = findKey(['공급처상품명'], ['공급처상품명','상품명','품목명']);
+  const optKey  = findKey(['공급처옵션명'], ['공급처옵션명','옵션명']);
+  const qtyKey  = findKey(['수량'], ['수량','qty','판매수량']);
+  const revKey  = findKey(['판매금액'], ['판매금액','판매가금액','매출']);
+  const costKey = findKey(['원가금액'], ['원가금액','원가','cost']);
+  const dateKey = findKey(['주문일','결제일'], ['주문일','결제일','날짜']);
 
-  // 파일명에서 날짜 추출 - 20XXXXXX 또는 2자리연도 YYMMDD 지원
+  console.log('어드민 키 감지:', {grpKey, chKey, nameKey, qtyKey, revKey});
+
+  // 파일명에서 날짜 추출
   const fnDate = (() => {
     const m8 = filename.match(/(?<![0-9])(20[2-9][0-9])([01][0-9])([0-3][0-9])(?![0-9])/);
     if(m8) return `${m8[1]}-${m8[2]}-${m8[3]}`;
@@ -4954,38 +4963,53 @@ function parseAdminRows(rows, filename) {
     return new Date().toISOString().slice(0,10);
   })();
 
-  const SELF_MALL = ['카페24','cafe24','자체몰','멜리언스','meliens'];
-  const SS_CH = ['스마트스토어','네이버쇼핑','smartstore','naver'];
+  // 채널 정규화 매핑 테이블
+  const CH_MAP = {
+    '카페24': '자사몰', 'cafe24': '자사몰', '자체몰': '자사몰',
+    '스마트스토어': '스마트스토어', '네이버쇼핑': '스마트스토어',
+    // B2B 쿠팡로켓 → 쿠팡으로 통합
+    '쿠팡로켓배송(송장)': '쿠팡', '쿠팡로켓배송(권장)': '쿠팡',
+    '쿠팡로켓그로스': '쿠팡', '쿠팡': '쿠팡',
+    // 외부채널 그대로 유지
+    '11번가': '11번가', 'G마켓': 'G마켓', '무신사': '무신사',
+    '신세계': '신세계', '에이블리': '에이블리', '이지웰': '이지웰',
+    '지그재그': '지그재그', '카카오': '카카오', '카카오 #2': '카카오 #2',
+    '홈앤쇼핑': '홈앤쇼핑', 'CS': 'CS',
+  };
 
   const newRows = rows.map(r => {
-    let channel = chKey ? (r[chKey]||'').trim() : '';
-    if(SELF_MALL.some(k => channel.toLowerCase().replace(/\s/g,'').includes(k.toLowerCase()))) channel = '자사몰';
-    else if(SS_CH.some(k => channel.toLowerCase().replace(/\s/g,'').includes(k.toLowerCase()))) channel = '스마트스토어';
-    if(!channel) channel = '기타';
+    // 판매처 컬럼에서 실제 채널명 읽기
+    const rawCh = chKey ? String(r[chKey]||'').trim() : '';
+    // 정확한 매핑 우선, 없으면 normalizeChannel로 fallback
+    const channel = CH_MAP[rawCh] || normalizeChannel(rawCh) || '기타';
 
-    const name   = nameKey ? (r[nameKey]||'').trim() : '';
-    const opt    = optKey  ? (r[optKey] ||'').trim() : '';
-    const sku    = opt ? name+' '+opt : name;
-    const qty    = qtyKey  ? (parseInt(String(r[qtyKey]||'0').replace(/,/g,'')) || 0) : 0;
-    const rev    = revKey  ? (parseFloat(String(r[revKey]||'0').replace(/[^0-9.-]/g,'')) || 0) : 0;
+    // CS(고객서비스) 등 매출 없는 채널은 제외
+    if(channel === 'CS') return null;
 
-    // 날짜: 행 내 날짜 컬럼 우선, 없으면 파일명에서
+    const name = nameKey ? String(r[nameKey]||'').trim() : '';
+    const opt  = optKey  ? String(r[optKey] ||'').trim() : '';
+    const sku  = opt ? name+' '+opt : name;
+    const qty  = qtyKey  ? (parseInt(String(r[qtyKey]||'0').replace(/,/g,''))  || 0) : 0;
+    const rev  = revKey  ? (parseFloat(String(r[revKey]||'0').replace(/[^0-9.-]/g,'')) || 0) : 0;
+    const cost = costKey ? (parseFloat(String(r[costKey]||'0').replace(/[^0-9.-]/g,'')) || 0) : 0;
+
     let date = fnDate;
     if(dateKey && r[dateKey]) {
-      const raw = String(r[dateKey]).trim().replace(/\./g,'-').replace(/\//g,'-');
-      if(raw.slice(0,10).match(/^20[2-9]\d-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\d|3[01])$/)) date = raw.slice(0,10);
+      const raw = String(r[dateKey]).trim().replace(/[./]/g,'-');
+      if(/^20[2-9]\d-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\d|3[01])$/.test(raw.slice(0,10)))
+        date = raw.slice(0,10);
     }
 
-    const cost = costKey ? (parseFloat(String(r[costKey]||'0').replace(/[^0-9.-]/g,'')) || 0) : 0;
     return { date, sku, channel, qty, rev, cost };
-  }).filter(r => r.sku && r.channel && (r.qty > 0 || r.rev > 0));
+  }).filter(r => r && r.sku && (r.qty > 0 || r.rev > 0));
 
   if(newRows.length === 0) {
-    showToast('⚠️ 어드민 파일: 인식된 데이터가 없습니다. 파일 형식을 확인해주세요.');
-    console.warn('어드민 파일 컬럼:', Object.keys(firstRow));
+    showToast('⚠️ 어드민 파일: 인식된 데이터가 없습니다.');
+    console.warn('어드민 파일 컬럼:', allKeys);
     return;
   }
 
+  console.log('어드민 채널 집계:', [...new Set(newRows.map(r=>r.channel))]);
   mergeSDRows(newRows, 'admin', filename);
 }
 
@@ -5160,8 +5184,13 @@ function updateSDFilters() {
   }
   const chSel = document.getElementById('sdChannelSelect');
   if(chSel) {
+    const CH_PRIO = ['쿠팡','자사몰','스마트스토어','전체(판매수량)'];
+    const sorted = [
+      ...CH_PRIO.filter(ch => channels.includes(ch)),
+      ...channels.filter(ch => !CH_PRIO.includes(ch)).sort((a,b) => a.localeCompare(b,'ko'))
+    ];
     chSel.innerHTML = '<option value="all">전체 채널</option>' +
-      channels.map(c=>`<option value="${c}">${c}</option>`).join('');
+      sorted.map(ch=>`<option value="${ch}">${ch}</option>`).join('');
   }
 }
 
@@ -5295,7 +5324,8 @@ function renderSDTable() {
   const validDateRe = /^20[2-9]\d-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\d|3[01])$/;
   const allDates = [...new Set(rows.map(r=>r.date).filter(d=>validDateRe.test(d)))].sort().reverse().slice(0,7).reverse();
   // 채널 목록 - 정해진 순서로 정렬
-  const CH_ORDER = ['자사몰','스마트스토어','쿠팡','전체(판매수량)'];
+  // 채널 표시 순서: 쿠팡 → 자사몰 → 스마트스토어 → 외부채널(나머지)
+  const CH_ORDER = ['쿠팡','자사몰','스마트스토어','전체(판매수량)'];
   const rawChannels = [...new Set(rows.map(r=>r.channel))];
   const allChannels = [
     ...CH_ORDER.filter(c => rawChannels.includes(c)),
@@ -5326,26 +5356,23 @@ function renderSDTable() {
   else if(sdSort === 'name') filtered.sort((a,b) => a.sku.localeCompare(b.sku, 'ko'));
 
   // KPI 업데이트
-  const totalQty = allSkus.reduce((s,r)=>s+r.totalQty, 0);
+  const totalQty = mainRows.reduce((s,r)=>s+r.qty, 0) || rows.reduce((s,r)=>s+r.qty,0);
   const totalRev = rows.reduce((s,r)=>s+r.rev, 0);
   const issueCnt = allSkus.filter(s=>s.isIssue).length;
   const chCnt    = allChannels.length;
   const upd = (id,html) => { const el=document.getElementById(id); if(el) el.innerHTML=html; };
   // 채널별 집계
-  const CH_GROUPS = {
-    self:    ['자사몰'],
-    ss:      ['스마트스토어'],
-    coupang: ['쿠팡'],
-  };
-  function getChQty(group) {
-    return allSkus.reduce((s, sk) => s + Object.entries(sk.channels)
-      .filter(([ch]) => group.some(g => ch.includes(g)))
-      .reduce((ss, [,v]) => ss+v, 0), 0);
-  }
-  const coupangQty = getChQty(CH_GROUPS.coupang);
-  const selfQty    = getChQty(CH_GROUPS.self);
-  const ssQty      = getChQty(CH_GROUPS.ss);
-  const extQty     = totalQty - coupangQty - selfQty - ssQty;
+  // KPI: rows(필터 적용된 sdRawRows)에서 직접 채널별 합산
+  // '전체(판매수량)' 채널은 판매수량 파일로 채널 구분 없음 → KPI에서 제외 (별도 표시)
+  const mainRows = rows.filter(r => r.channel !== '전체(판매수량)');
+  const sumCh = (chName) => mainRows.filter(r=>r.channel===chName).reduce((s,r)=>s+r.qty,0);
+  const coupangQty = sumCh('쿠팡');
+  const selfQty    = sumCh('자사몰');
+  const ssQty      = sumCh('스마트스토어');
+  const mainTotal  = mainRows.reduce((s,r)=>s+r.qty,0);
+  const extQty     = mainTotal - coupangQty - selfQty - ssQty;
+  // 판매수량 파일 전체
+  const sdQty      = rows.filter(r=>r.channel==='전체(판매수량)').reduce((s,r)=>s+r.qty,0);
 
   // 날짜 기준 텍스트 (파일명 숫자 제외, 날짜만)
   // dateLabel (이미 validDateRe로 필터된 allDates 기준)
@@ -5354,7 +5381,10 @@ function renderSDTable() {
     : '데이터 없음';
 
   upd('sd-total-qty',  totalQty.toLocaleString());
-  upd('sd-total-sub',  allDates.length>0 ? `${allDates[0].slice(5)} ~ ${allDates[allDates.length-1].slice(5)} (${allDates.length}일)` : '데이터 없음');
+  const rangeStr = allDates.length===0 ? '데이터 없음'
+    : allDates.length===1 ? allDates[0]+' 기준'
+    : allDates[0]+' ~ '+allDates[allDates.length-1]+' ('+allDates.length+'일)';
+  upd('sd-total-sub', rangeStr);
   upd('sd-issue-info', issueCnt>0 ? `⚠ 이슈 ${issueCnt}개 / ${allSkus.length}개 SKU` : `${allSkus.length}개 SKU`);
 
   // 채널별 KPI
@@ -5362,8 +5392,14 @@ function renderSDTable() {
   // 매출 데이터 (sdRawRows 기반)
   const getRevByGroup = (grp) => allSkus.reduce((s,sk) => s + Object.entries(sk.channels)
     .filter(([ch]) => grp.some(g=>ch===g)).reduce((ss,[,v])=>ss+v,0) * 0, 0); // 수량 기준
-  const pct = (v) => totalQty>0 ? Math.round(v/totalQty*100) : 0;
-  const fmtSub = (qty, grpLabel) => qty>0 ? `${pct(qty)}% · ${qty.toLocaleString()}개` : '데이터 없음';
+  const pct = (v) => mainTotal>0 ? Math.round(v/mainTotal*100) : 0;
+  // 카드 서브텍스트: 비율 + 수량 + 날짜 기준
+  const dateLabel2 = allDates.length>0
+    ? (allDates.length===1 ? allDates[0].slice(5) : allDates[0].slice(5)+'~'+allDates[allDates.length-1].slice(5))
+    : '';
+  const fmtSub = (qty, grpLabel) => qty>0
+    ? `${pct(qty)}% · ${qty.toLocaleString()}개${dateLabel2?' <span style="font-size:9px;color:var(--t3)">'+dateLabel2+'</span>':''}`
+    : '데이터 없음';
 
   upd('sd-kpi-self',        fmtKpi(selfQty));
   upd('sd-kpi-self-sub',    fmtSub(selfQty,'자사몰'));
@@ -5372,7 +5408,9 @@ function renderSDTable() {
   upd('sd-kpi-coupang',     fmtKpi(coupangQty));
   upd('sd-kpi-coupang-sub', fmtSub(coupangQty,'쿠팡'));
   upd('sd-kpi-ext',         fmtKpi(Math.max(0,extQty)));
-  upd('sd-kpi-ext-sub',     extQty>0 ? `${pct(extQty)}% · ${extQty.toLocaleString()}개` : '데이터 없음');
+  upd('sd-kpi-ext-sub', extQty>0
+    ? `${pct(extQty)}% · ${extQty.toLocaleString()}개${dateLabel2?' <span style="font-size:9px;color:var(--t3)">'+dateLabel2+'</span>':''}`
+    : '데이터 없음');
 
   // 이슈 뱃지 토글
   const issueBadgeEl = document.getElementById('sd-issue-badge');
