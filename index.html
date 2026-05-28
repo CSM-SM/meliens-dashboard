@@ -1097,28 +1097,41 @@ tbody tr:hover td{background:var(--surface2)}
         <div id="sdLastUpdate" style="margin-top:12px;font-size:11px;color:var(--t3);text-align:right"></div>
       </div>
 
-      <!-- KPI 카드 -->
+      <!-- 전체 합계 바 -->
+      <div class="card" style="margin-bottom:12px;padding:14px 18px;display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+        <div style="font-size:11px;font-weight:700;color:var(--t3);font-family:Montserrat,sans-serif;letter-spacing:1px">전체 합계</div>
+        <div style="display:flex;align-items:baseline;gap:4px">
+          <span style="font-size:22px;font-weight:800;color:var(--navy);font-family:Montserrat,sans-serif" id="sd-total-qty">--</span>
+          <span style="font-size:12px;color:var(--t3)">개</span>
+        </div>
+        <div style="font-size:11px;color:var(--t3)" id="sd-total-sub">데이터 없음</div>
+        <div style="margin-left:auto;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <div style="font-size:11px;color:var(--t3)" id="sd-issue-info"></div>
+        </div>
+      </div>
+
+      <!-- KPI 카드 4개 — 채널별 -->
       <div class="grid-4" style="margin-bottom:16px">
-        <div class="kpi-card"><div class="kpi-accent" style="background:var(--blue)"></div>
-          <div class="kpi-label">총 판매수량</div>
-          <div class="kpi-value" id="sd-total-qty">--<span class="kpi-unit">개</span></div>
-          <div class="kpi-change neutral" id="sd-total-sub">데이터 없음</div>
+        <div class="kpi-card"><div class="kpi-accent" style="background:#E8140C"></div>
+          <div class="kpi-label">🛒 쿠팡</div>
+          <div class="kpi-value" id="sd-kpi-coupang">--<span class="kpi-unit">개</span></div>
+          <div class="kpi-change neutral" id="sd-kpi-coupang-sub">데이터 없음</div>
         </div>
         <div class="kpi-card"><div class="kpi-accent" style="background:var(--teal)"></div>
-          <div class="kpi-label">총 매출</div>
-          <div class="kpi-value" id="sd-total-rev">--<span class="kpi-unit">원</span></div>
-          <div class="kpi-change neutral" id="sd-rev-sub">어드민 파일 기준</div>
+          <div class="kpi-label">🏠 자사몰</div>
+          <div class="kpi-value" id="sd-kpi-self">--<span class="kpi-unit">개</span></div>
+          <div class="kpi-change neutral" id="sd-kpi-self-sub">데이터 없음</div>
         </div>
-        <div class="kpi-card" style="cursor:pointer" onclick="setSDFilter('issue')" onmouseenter="this.style.boxShadow='0 4px 20px rgba(255,75,75,0.2)'" onmouseleave="this.style.boxShadow=''">
-          <div class="kpi-accent" style="background:var(--red)"></div>
-          <div class="kpi-label">이슈 SKU <span style="font-size:10px;color:var(--red)">▶ 클릭필터</span></div>
-          <div class="kpi-value" id="sd-issue-cnt">--<span class="kpi-unit">개</span></div>
-          <div class="kpi-change down" id="sd-issue-sub">판매 0 또는 급감</div>
+        <div class="kpi-card"><div class="kpi-accent" style="background:#03C75A"></div>
+          <div class="kpi-label">🟢 스마트스토어</div>
+          <div class="kpi-value" id="sd-kpi-ss">--<span class="kpi-unit">개</span></div>
+          <div class="kpi-change neutral" id="sd-kpi-ss-sub">데이터 없음</div>
         </div>
-        <div class="kpi-card"><div class="kpi-accent" style="background:var(--purple)"></div>
-          <div class="kpi-label">활성 채널</div>
-          <div class="kpi-value" id="sd-channel-cnt">--<span class="kpi-unit">개</span></div>
-          <div class="kpi-change neutral" id="sd-channel-sub">판매 발생 채널</div>
+        <div class="kpi-card" style="cursor:pointer" onclick="setSDFilter('issue')" onmouseenter="this.style.boxShadow='0 4px 20px rgba(108,92,231,0.2)'" onmouseleave="this.style.boxShadow=''">
+          <div class="kpi-accent" style="background:var(--purple)"></div>
+          <div class="kpi-label">🌐 외부 채널 합계 <span style="font-size:9px;color:var(--purple)">▶ 이슈필터</span></div>
+          <div class="kpi-value" id="sd-kpi-ext">--<span class="kpi-unit">개</span></div>
+          <div class="kpi-change neutral" id="sd-kpi-ext-sub">데이터 없음</div>
         </div>
       </div>
 
@@ -4819,13 +4832,41 @@ function renderSDTable() {
   const issueCnt = allSkus.filter(s=>s.isIssue).length;
   const chCnt    = allChannels.length;
   const upd = (id,html) => { const el=document.getElementById(id); if(el) el.innerHTML=html; };
-  upd('sd-total-qty',  `${totalQty.toLocaleString()}<span class="kpi-unit">개</span>`);
-  upd('sd-total-rev',  `${Math.round(totalRev/10000).toLocaleString()}<span class="kpi-unit">만원</span>`);
-  upd('sd-issue-cnt',  `${issueCnt}<span class="kpi-unit">개</span>`);
-  upd('sd-channel-cnt',`${chCnt}<span class="kpi-unit">개</span>`);
-  upd('sd-total-sub',  `${allDates.length>0?allDates[allDates.length-1]+' 기준':''}`);
-  upd('sd-issue-sub',  `전체 ${allSkus.length}개 중`);
-  upd('sd-channel-sub',allChannels.join(' · ').slice(0,30));
+  // 채널별 집계
+  const CH_GROUPS = {
+    coupang: ['쿠팡'],
+    self:    ['자사몰', 'meliens', '카페24', '자체몰'],
+    ss:      ['스마트스토어', '네이버', 'smartstore', 'NAVER'],
+  };
+  function getChQty(group) {
+    return allSkus.reduce((s, sk) => s + Object.entries(sk.channels)
+      .filter(([ch]) => group.some(g => ch.includes(g)))
+      .reduce((ss, [,v]) => ss+v, 0), 0);
+  }
+  const coupangQty = getChQty(CH_GROUPS.coupang);
+  const selfQty    = getChQty(CH_GROUPS.self);
+  const ssQty      = getChQty(CH_GROUPS.ss);
+  const extQty     = totalQty - coupangQty - selfQty - ssQty;
+
+  // 날짜 기준 텍스트 (파일명 숫자 제외, 날짜만)
+  const dateLabel = allDates.length > 0
+    ? (allDates[allDates.length-1] + (allDates.length>1 ? ` 외 ${allDates.length-1}일` : '') + ' 기준')
+    : '데이터 없음';
+
+  upd('sd-total-qty',  totalQty.toLocaleString());
+  upd('sd-total-sub',  dateLabel);
+  upd('sd-issue-info', `⚠ 이슈 SKU ${issueCnt}개 · 전체 ${allSkus.length}개`);
+
+  // 채널별 KPI
+  const fmtKpi = (v) => `${v.toLocaleString()}<span class="kpi-unit">개</span>`;
+  upd('sd-kpi-coupang',     fmtKpi(coupangQty));
+  upd('sd-kpi-coupang-sub', coupangQty>0 ? `전체의 ${Math.round(coupangQty/totalQty*100)}%` : '데이터 없음');
+  upd('sd-kpi-self',        fmtKpi(selfQty));
+  upd('sd-kpi-self-sub',    selfQty>0 ? `전체의 ${Math.round(selfQty/totalQty*100)}%` : '데이터 없음');
+  upd('sd-kpi-ss',          fmtKpi(ssQty));
+  upd('sd-kpi-ss-sub',      ssQty>0 ? `전체의 ${Math.round(ssQty/totalQty*100)}%` : '데이터 없음');
+  upd('sd-kpi-ext',         fmtKpi(Math.max(0,extQty)));
+  upd('sd-kpi-ext-sub',     extQty>0 ? allChannels.filter(ch=>!['쿠팡','자사몰','스마트스토어','네이버'].some(m=>ch.includes(m))).join(' · ').slice(0,25) : '데이터 없음');
 
   // 테이블 헤더 (SKU | 채널들 | 날짜들 | 합계)
   const thead = document.getElementById('sdThead');
