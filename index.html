@@ -1070,7 +1070,7 @@ tbody tr:hover td{background:var(--surface2)}
       <div class="card" style="margin-bottom:16px">
         <div class="card-header">
           <div class="card-title">📂 일일 판매 데이터 업로드</div>
-          <div style="font-size:11px;color:var(--t3)">매일 아침 전날 데이터를 업로드하세요 · 브라우저에 자동 저장됩니다</div>
+          <div style="font-size:11px;color:var(--t3)">매일 아침 전날 데이터를 업로드하세요 · <span style="color:var(--teal);font-weight:700">이커머스 매출 & 홈 대시보드 자동 반영</span> · 브라우저에 자동 저장</div>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
           <!-- 쿠팡 성과 파일 -->
@@ -3245,7 +3245,21 @@ function openPPTWindow(html, title) {
 function slideShell(slides, dateStr, subtitle) {
   const nav = `<div class="nav"><button class="nb" onclick="go(-1)">← 이전</button><button class="nb print" onclick="window.print()">🖨 PDF 저장</button><button class="nb" onclick="go(1)">다음 →</button></div>`;
   const css = `*{box-sizing:border-box;margin:0;padding:0}body{font-family:"Noto Sans KR",sans-serif;background:#0A0F1A;color:#fff;overflow:hidden;height:100vh}.slide{width:100vw;height:100vh;display:none;flex-direction:column;padding:44px 60px;position:relative;overflow:hidden}.slide.active{display:flex}.brand{font-family:Montserrat,sans-serif;font-weight:800;font-size:11px;letter-spacing:3px;color:rgba(255,255,255,.3);margin-bottom:24px}.stitle{font-size:36px;font-weight:700;margin-bottom:6px;line-height:1.2}.ssub{font-size:14px;color:rgba(255,255,255,.45);margin-bottom:30px}.snum{position:absolute;bottom:24px;right:32px;font-family:Montserrat,sans-serif;font-size:11px;color:rgba(255,255,255,.2)}.kbox{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:18px}.klb{font-size:10px;color:rgba(255,255,255,.4);font-family:Montserrat,sans-serif;letter-spacing:1px;margin-bottom:8px;text-transform:uppercase}.kv{font-family:Montserrat,sans-serif;font-size:26px;font-weight:800;line-height:1}.kc{font-size:11px;margin-top:6px}.bl{color:#007AFF}.up{color:#11CAA0}.dn{color:#FF4B4B}.am{color:#F5A623}.sbox{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:20px;flex:1}.sbt{font-size:10px;font-weight:700;color:rgba(255,255,255,.4);font-family:Montserrat,sans-serif;letter-spacing:1.5px;margin-bottom:12px;text-transform:uppercase}.row{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.07);font-size:13px;color:rgba(255,255,255,.8)}.row:last-child{border-bottom:none}.dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;margin-right:8px}.nav{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);display:flex;gap:10px;z-index:100}.nb{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);color:#fff;padding:8px 20px;border-radius:30px;font-size:12px;font-weight:700;cursor:pointer;font-family:Montserrat,sans-serif}.nb:hover{background:rgba(255,255,255,.18)}.nb.print{background:rgba(0,122,255,.25);border-color:rgba(0,122,255,.4)}@media print{.nav{display:none!important}@page{size:A4 landscape;margin:8mm}.slide{page-break-after:always;height:auto;min-height:180mm}.slide,.slide.active{display:flex!important}}`;
-  return `<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><title>MELIENS ${subtitle} ${dateStr}</title><link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;800&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet"><style>${css}</style></head><body>${slides}${nav}<script>let c=1,t=document.querySelectorAll('.slide').length;function go(d){c=Math.max(1,Math.min(t,c+d));document.querySelectorAll('.slide').forEach((s,i)=>s.classList.toggle('active',i===c-1));}document.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' ')go(1);if(e.key==='ArrowLeft')go(-1)});<\/script></body></html>`;
+  return `<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><title>MELIENS ${subtitle} ${dateStr}</title><link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;800&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet"><style>${css}
+  /* 채널/SKU 판매 품목명 셀 */
+  .sd-sku-cell { transition: max-width 0.2s; }
+  .sd-sku-cell:hover {
+    white-space: normal !important;
+    overflow: visible !important;
+    background: var(--navy) !important;
+    color: #fff !important;
+    position: relative;
+    z-index: 10;
+    border-radius: 4px;
+    padding: 4px 8px;
+    box-shadow: 0 4px 16px rgba(0,45,94,0.3);
+  }
+</style></head><body>${slides}${nav}<script>let c=1,t=document.querySelectorAll('.slide').length;function go(d){c=Math.max(1,Math.min(t,c+d));document.querySelectorAll('.slide').forEach((s,i)=>s.classList.toggle('active',i===c-1));}document.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' ')go(1);if(e.key==='ArrowLeft')go(-1)});<\/script></body></html>`;
 }
 
 // ── 이커머스 매출 PPT ──
@@ -4629,7 +4643,17 @@ const SD_STORAGE_KEY  = 'meliens_salesdata_rows';
 const SD_META_KEY     = 'meliens_salesdata_meta';
 let sdRawRows   = [];   // [{date, sku, channel, qty, rev, isIssue}]
 let sdFilter    = 'all';
-let sdSort      = 'desc'; // 'desc'=합계 내림차순, 'asc'=합계 오름차순, 'name'=이름순
+let sdSort      = 'desc';
+
+// 채널명 정규화 (어디서 왔든 통일)
+function normalizeChannel(ch) {
+  if(!ch) return '기타';
+  const c = ch.toLowerCase().replace(/\s/g,'');
+  if(['카페24','cafe24','자체몰','멜리언스','meliens','자사몰'].some(k=>c.includes(k.toLowerCase().replace(/\s/g,'')))) return '자사몰';
+  if(['스마트스토어','smartstore','네이버쇼핑','naver'].some(k=>c.includes(k.toLowerCase()))) return '스마트스토어';
+  if(['쿠팡','coupang'].some(k=>c.includes(k))) return '쿠팡';
+  return ch.trim();
+} // 'desc'=합계 내림차순, 'asc'=합계 오름차순, 'name'=이름순
 
 // ── 파일 드롭 처리 ──
 function handleSalesDataDrop(event, type) {
@@ -4719,107 +4743,83 @@ function parseMeliensXLSX(wb, filename) {
   const sheetName = wb.SheetNames.find(s => s.includes('판매수량피벗') || s.includes('누적')) || wb.SheetNames[0];
   const ws = wb.Sheets[sheetName];
 
-  // raw:true 로 읽어야 날짜 셀을 Excel serial number로 받음 → 직접 변환
-  // raw:false는 로케일 의존적 문자열 변환이라 환경마다 다를 수 있음
-  const rawTrue  = XLSX.utils.sheet_to_json(ws, {header:1, defval:null, raw:true});
-  const rawFalse = XLSX.utils.sheet_to_json(ws, {header:1, defval:null, raw:false});
+  // raw:true 로만 읽기 → 날짜셀은 Excel serial number(숫자)로 옴
+  const raw = XLSX.utils.sheet_to_json(ws, {header:1, defval:null, raw:true});
 
-  // Excel serial → YYYY-MM-DD 변환 함수
-  function excelSerialToDate(serial) {
-    if(typeof serial !== 'number' || serial < 40000 || serial > 80000) return null;
-    // Excel epoch: 1900-01-00 (실제로 1899-12-30 기준)
-    const msPerDay = 86400000;
-    const excelEpoch = new Date(1899, 11, 30).getTime();
-    const d = new Date(excelEpoch + serial * msPerDay);
-    const y = d.getFullYear(), mo = d.getMonth()+1, da = d.getDate();
+  // Excel serial → YYYY-MM-DD
+  function serialToDate(n) {
+    if(typeof n !== 'number' || n < 40000 || n > 80000) return null;
+    const d = new Date(Math.round((n - 25569) * 86400000)); // UTC epoch 기준
+    const y = d.getUTCFullYear(), mo = d.getUTCMonth()+1, da = d.getUTCDate();
     if(y < 2020 || y > 2035) return null;
-    return `${y}-${String(mo).padStart(2,'0')}-${String(da).padStart(2,'0')}`;
+    return y+'-'+String(mo).padStart(2,'0')+'-'+String(da).padStart(2,'0');
   }
 
-  // 날짜 값을 YYYY-MM-DD로 파싱 (여러 형식 지원)
-  function parseToDate(v, vRaw) {
+  // 모든 형태의 날짜값 파싱
+  function toDate(v) {
     if(v === null || v === undefined) return null;
-    const s = String(v).trim();
-    if(!s || s === '총합계' || s.includes('요약') || s === '-') return null;
-
-    // 1) "2025-11-01" 또는 "2025-11-01 00:00:00" 형태
-    const m1 = s.match(/^(20[2-9]\d)[-/.](0[1-9]|1[0-2])[-/.](0[1-9]|[12]\d|3[01])/);
-    if(m1) return `${m1[1]}-${m1[2]}-${m1[3]}`;
-
-    // 2) "11/1/2025" 또는 "1/11/2025" 같은 로케일 형태
-    const m2 = s.match(/^(\d{1,2})[/.](\d{1,2})[/.](\d{4})$/);
-    if(m2) {
-      const [, a, b, y] = m2;
-      if(parseInt(y) >= 2020) {
-        // MM/DD/YYYY 가정
-        const mo = String(a).padStart(2,'0'), da = String(b).padStart(2,'0');
-        return `${y}-${mo}-${da}`;
-      }
-    }
-
-    // 3) JS Date 객체 (cellDates:true일 때)
+    // 숫자(serial)
+    if(typeof v === 'number') return serialToDate(v);
+    // Date 객체
     if(v instanceof Date) {
-      const y=v.getFullYear(), mo=v.getMonth()+1, da=v.getDate();
-      if(y>=2020 && y<=2035) return `${y}-${String(mo).padStart(2,'0')}-${String(da).padStart(2,'0')}`;
+      const y=v.getFullYear(),mo=v.getMonth()+1,da=v.getDate();
+      if(y>=2020&&y<=2035) return y+'-'+String(mo).padStart(2,'0')+'-'+String(da).padStart(2,'0');
     }
-
-    // 4) Excel serial number (raw:true일 때 숫자)
-    if(typeof vRaw === 'number') {
-      const d = excelSerialToDate(vRaw);
-      if(d) return d;
-    }
-
+    const s = String(v).trim();
+    if(!s || s==='총합계' || s.includes('요약') || s==='-') return null;
+    // "2025-11-01" 또는 "2025-11-01 00:00:00"
+    const m1 = s.match(/^(20[2-9]\d)[-.\/](0?[1-9]|1[0-2])[-.\/](0?[1-9]|[12]\d|3[01])/);
+    if(m1) return m1[1]+'-'+m1[2].padStart(2,'0')+'-'+m1[3].padStart(2,'0');
+    // "11/1/2025" (M/D/YYYY)
+    const m2 = s.match(/^(\d{1,2})\/(\d{1,2})\/(20[2-9]\d)$/);
+    if(m2) return m2[3]+'-'+m2[1].padStart(2,'0')+'-'+m2[2].padStart(2,'0');
     return null;
   }
 
-  // 날짜 행(행4, index=3) 파싱
-  const dateRowFalse = rawFalse[3] || [];
-  const dateRowTrue  = rawTrue[3]  || [];
+  // 날짜 행(index=3, 행4) 파싱
+  const dateRow = raw[3] || [];
   const dateColMap = {};
-
-  dateRowFalse.forEach((v, ci) => {
-    const dt = parseToDate(v, dateRowTrue[ci]);
+  dateRow.forEach((v, ci) => {
+    const dt = toDate(v);
     if(dt) dateColMap[ci] = dt;
   });
 
-  // 디버그 로그
-  console.log('멜리언스 파일 날짜 컬럼 수:', Object.keys(dateColMap).length);
+  console.log('멜리언스 날짜 컬럼 수:', Object.keys(dateColMap).length,
+    '/ 행4 샘플(raw:true):', dateRow.slice(0,5));
+
   if(Object.keys(dateColMap).length === 0) {
-    // 행4 샘플 출력해서 어떤 값이 있는지 확인
-    console.warn('행4 샘플(raw:false):', dateRowFalse.slice(0,10));
-    console.warn('행4 샘플(raw:true):', dateRowTrue.slice(0,10));
-    showToast('⚠️ 멜리언스 파일: 날짜 컬럼을 찾을 수 없습니다 (콘솔 확인)');
+    showToast('⚠️ 멜리언스 파일: 날짜를 읽지 못했습니다. 콘솔(F12)을 확인해주세요.');
     return;
   }
 
-  // 데이터 행 (행6~, index=5)
+  // 데이터 행(index=5~)
   const newRows = [];
-  for(let ri = 5; ri < rawFalse.length; ri++) {
-    const row = rawFalse[ri];
+  for(let ri = 5; ri < raw.length; ri++) {
+    const row = raw[ri];
     if(!row) continue;
     const name = row[0] ? String(row[0]).trim() : '';
     if(!name || name === '총합계' || name === '-') continue;
 
-    Object.entries(dateColMap).forEach(([ci, dt]) => {
-      const v = row[parseInt(ci)];
-      if(v === null || v === undefined || v === '' || v === '-') return;
-      const qty = parseInt(String(v).replace(/[^0-9-]/g,''));
+    for(const [ciStr, dt] of Object.entries(dateColMap)) {
+      const v = row[parseInt(ciStr)];
+      if(v === null || v === undefined || v === '' || v === '-') continue;
+      const qty = parseInt(String(v).replace(/[^0-9]/g,''));
       if(!isNaN(qty) && qty > 0) {
         newRows.push({ date: dt, sku: name, channel: '전체(판매수량)', qty, rev: 0 });
       }
-    });
+    }
   }
 
   if(newRows.length === 0) {
-    showToast('⚠️ 멜리언스 파일: 데이터를 읽지 못했습니다');
+    showToast('⚠️ 멜리언스 파일: 수량 데이터가 없습니다.');
     return;
   }
 
   const dates = [...new Set(newRows.map(r=>r.date))].sort();
-  console.log(`멜리언스 XLSX 파싱 완료: ${newRows.length}행, ${dates[0]}~${dates[dates.length-1]}`);
+  console.log('파싱 완료:', newRows.length+'행', dates[0]+'~'+dates[dates.length-1]);
 
   const statusEl = document.getElementById('adminFileStatus');
-  if(statusEl) statusEl.textContent = `✅ ${filename} · ${dates.length}일`;
+  if(statusEl) statusEl.textContent = '✅ '+filename+' · '+dates.length+'일';
 
   mergeSDRows(newRows, 'meliens', filename);
 }
@@ -4838,6 +4838,7 @@ function parseCoupangRows(rows, filename) {
   const skuKey  = findKey(['SKU명','벤더아이템명','상품명','itemname','벤더상품명']);
   const qtyKey  = findKey(['판매수량','unitssold','판매량','수량']);
   const revKey  = findKey(['매출액','gmv','매출','revenue','판매금액']);
+  const costKey = findKey(['매입원가','cogs','원가','cost']);
 
   // 파일명에서 날짜 추출 (fallback)
   const fnDate = (() => {
@@ -4862,7 +4863,8 @@ function parseCoupangRows(rows, filename) {
     const qty = qtyKey ? (parseInt(String(r[qtyKey]||'0').replace(/,/g,'')) || 0) : 0;
     const rev = revKey ? (parseFloat(String(r[revKey]||'0').replace(/[^0-9.-]/g,'')) || 0) : 0;
 
-    return { date, sku, channel:'쿠팡', qty, rev };
+    const cost = costKey ? (parseFloat(String(r[costKey]||'0').replace(/[^0-9.-]/g,'')) || 0) : 0;
+    return { date, sku, channel:'쿠팡', qty, rev, cost };
   }).filter(r => r.sku && r.date && r.date.length >= 10);
 
   if(newRows.length === 0) {
@@ -4887,7 +4889,8 @@ function parseAdminRows(rows, filename) {
   const nameKey = findKey(['공급처상품명','상품명','품목명','itemname']);
   const optKey  = findKey(['공급처옵션명','옵션명','optionname']);
   const qtyKey  = findKey(['수량','qty','quantity','판매수량']);
-  const revKey  = findKey(['판매가금액','판매금액','매출','revenue','결제금액']);
+  const revKey  = findKey(['판매금액','판매가금액','매출','revenue','결제금액']);
+  const costKey = findKey(['원가금액','원가','cost','매입가','공급가금액']);
   const dateKey = findKey(['주문일','결제일','날짜','date','정산일']);
 
   // 파일명에서 날짜 추출 (파일명 숫자 9자리 이상은 날짜 아님)
@@ -4918,7 +4921,8 @@ function parseAdminRows(rows, filename) {
       if(raw.slice(0,10).match(/^20[2-9]\d-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\d|3[01])$/)) date = raw.slice(0,10);
     }
 
-    return { date, sku, channel, qty, rev };
+    const cost = costKey ? (parseFloat(String(r[costKey]||'0').replace(/[^0-9.-]/g,'')) || 0) : 0;
+    return { date, sku, channel, qty, rev, cost };
   }).filter(r => r.sku && r.channel && (r.qty > 0 || r.rev > 0));
 
   if(newRows.length === 0) {
@@ -4941,6 +4945,8 @@ function mergeSDRows(newRows, source, filename) {
   const validDatePattern = /^20[2-9]\d-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\d|3[01])$/;
   newRows = newRows.filter(r => validDatePattern.test(r.date));
   if(newRows.length === 0) { showToast('⚠️ 유효한 날짜가 있는 데이터가 없습니다'); return; }
+  // 채널명 정규화
+  newRows.forEach(r => { r.channel = normalizeChannel(r.channel); });
 
   sdRawRows = sdRawRows.filter(r => !(channels.includes(r.channel) && dates.includes(r.date)));
   sdRawRows = [...sdRawRows, ...newRows];
@@ -4980,7 +4986,96 @@ function mergeSDRows(newRows, source, filename) {
   }
 
   renderSDTable();
+  // 이커머스 매출 + 홈 KPI 자동 동기화
+  setTimeout(() => syncRevenueFromSD(), 100);
   showToast(`✅ ${filename} 반영 완료 — ${newRows.length}개 행 · ${dateRange}`);
+}
+
+// ── sdRawRows → 이커머스 매출 + 홈 KPI 동기화 ──
+function syncRevenueFromSD() {
+  if(!sdRawRows.length) return;
+
+  // 채널 정규화 맵
+  const chMap = {
+    '쿠팡': '쿠팡',
+    '전체(판매수량)': null,  // 수량만, 매출 없으면 제외
+  };
+
+  // sdRawRows에서 rev > 0인 행만 uploadedSalesData로 변환
+  const revenueRows = sdRawRows.filter(r => r.rev > 0);
+  if(revenueRows.length === 0) return;
+
+  // SKU+채널+날짜별 집계
+  const skuMap = {};
+  revenueRows.forEach(r => {
+    const key = r.channel + '||' + r.sku + '||' + r.date;
+    if(!skuMap[key]) skuMap[key] = { name: r.sku, opt:'', sku:'', channel: r.channel, qty:0, cost:0, rev:0, margin:0, stock:0, date: r.date };
+    skuMap[key].qty  += r.qty;
+    skuMap[key].rev  += r.rev;
+    skuMap[key].cost += (r.cost||0);
+  });
+
+  const newSalesRows = Object.values(skuMap);
+  if(!newSalesRows.length) return;
+
+  // uploadedSalesData에 병합 (같은 채널+날짜는 덮어쓰기)
+  const channels = [...new Set(newSalesRows.map(r=>r.channel))];
+  const dates    = [...new Set(newSalesRows.map(r=>r.date))];
+  uploadedSalesData = uploadedSalesData.filter(r => !(channels.includes(r.channel) && dates.includes(r.date)));
+  uploadedSalesData = [...uploadedSalesData, ...newSalesRows];
+
+  // localStorage 저장
+  try { saveToStorage(STORAGE_KEYS.sales, uploadedSalesData); } catch(e) {}
+
+  // 이커머스 매출 페이지 갱신
+  if(typeof buildSalesTable === 'function') buildSalesTable();
+
+  // 홈 대시보드 KPI 갱신
+  updateHomeKPIFromData();
+}
+
+// ── 홈 KPI 업데이트 (uploadedSalesData + sdRawRows 기반) ──
+function updateHomeKPIFromData() {
+  // 이번 주 데이터만
+  const now = new Date();
+  const dow = now.getDay();
+  const mon = new Date(now); mon.setDate(now.getDate()-(dow===0?6:dow-1)); mon.setHours(0,0,0,0);
+  const sun = new Date(mon); sun.setDate(mon.getDate()+6); sun.setHours(23,59,59,999);
+  const monStr = mon.toISOString().slice(0,10);
+  const sunStr = sun.toISOString().slice(0,10);
+
+  // 전체 매출 (uploadedSalesData 기준)
+  const weekSales = uploadedSalesData.filter(r => r.date >= monStr && r.date <= sunStr);
+  const totalRev  = weekSales.reduce((s,r)=>s+r.rev,0);
+  const totalQty  = weekSales.reduce((s,r)=>s+r.qty,0);
+
+  // 채널별 매출
+  const chRevMap = {};
+  weekSales.forEach(r => { chRevMap[r.channel] = (chRevMap[r.channel]||0) + r.rev; });
+
+  // sdRawRows 기준 수량 (매출 없는 채널도 포함)
+  const weekSD = sdRawRows.filter(r => r.date >= monStr && r.date <= sunStr);
+  const sdTotalQty = weekSD.reduce((s,r)=>s+r.qty,0);
+
+  const fmt = v => v >= 1e8 ? (v/1e8).toFixed(1)+'억' : v >= 1e4 ? Math.round(v/1e4).toLocaleString()+'만' : v.toLocaleString();
+
+  // 홈 KPI 업데이트
+  const upd = (id, html) => { const el=document.getElementById(id); if(el) el.innerHTML=html; };
+  if(totalRev > 0) {
+    upd('val-revenue', `₩${fmt(totalRev)}<span class="kpi-unit">원</span>`);
+    upd('chg-revenue', `이번 주 ${weekSales.length}건`);
+  }
+
+  // 채널별 KPI 카드 업데이트 (이미 있는 m-own, m-smart 등)
+  const selfRev    = (chRevMap['자사몰']||0);
+  const ssRev      = (chRevMap['스마트스토어']||0);
+  const coupangRev = (chRevMap['쿠팡']||0);
+  const extRev     = totalRev - selfRev - ssRev - coupangRev;
+
+  if(document.getElementById('m-own'))   document.getElementById('m-own').textContent   = selfRev>0    ? `₩${fmt(selfRev)}` : (sdRawRows.filter(r=>r.channel==='자사몰').length>0 ? '수량만' : '—');
+  if(document.getElementById('m-smart')) document.getElementById('m-smart').textContent = ssRev>0      ? `₩${fmt(ssRev)}`   : (sdRawRows.filter(r=>r.channel==='스마트스토어').length>0?'수량만':'—');
+  if(document.getElementById('m-coupang'))document.getElementById('m-coupang').textContent= coupangRev>0?`₩${fmt(coupangRev)}`:(sdRawRows.filter(r=>r.channel==='쿠팡').length>0?'수량만':'—');
+  if(document.getElementById('m-total')) document.getElementById('m-total').textContent  = totalRev>0   ? `₩${fmt(totalRev)}` : (sdTotalQty>0 ? `${sdTotalQty.toLocaleString()}개` : '—');
 }
 
 // ── 필터 셀렉트 업데이트 ──
@@ -5122,7 +5217,7 @@ function renderSDTable() {
   const thead = document.getElementById('sdThead');
   const sortIcon = sdSort==='desc'?' ↓':sdSort==='asc'?' ↑':'';
   if(thead) thead.innerHTML = `<tr>
-    <th onclick="setSDSort(sdSort==='name'?'desc':'name')" style="min-width:180px;position:sticky;left:0;background:var(--surface2);z-index:1;cursor:pointer" title="품목명 가나다순">SKU / 품목명${sdSort==='name'?' ↑↓':''}</th>
+    <th onclick="setSDSort(sdSort==='name'?'desc':'name')" style="min-width:160px;max-width:320px;position:sticky;left:0;background:var(--surface2);z-index:1;cursor:pointer;resize:horizontal;overflow:auto" title="품목명 가나다순 / 클릭으로 정렬">SKU / 품목명${sdSort==='name'?' ↑↓':''}</th>
     ${allChannels.map(ch=>`<th style="text-align:right;min-width:70px">${ch}</th>`).join('')}
     ${allDates.map(d=>`<th style="text-align:right;min-width:65px;color:var(--blue)">${d.slice(5)}</th>`).join('')}
     <th onclick="setSDSort(sdSort==='desc'?'asc':'desc')" style="text-align:right;min-width:70px;background:rgba(0,45,94,0.05);font-weight:800;cursor:pointer" title="합계 정렬">합계${sortIcon}</th>
@@ -5145,7 +5240,7 @@ function renderSDTable() {
         ? `<span style="font-size:10px;padding:2px 6px;border-radius:4px;background:rgba(255,75,75,0.1);color:var(--red);font-weight:700">⚠ 이슈</span>`
         : `<span style="font-size:10px;padding:2px 6px;border-radius:4px;background:rgba(17,202,160,0.1);color:var(--teal);font-weight:700">정상</span>`;
       return `<tr style="${s.isIssue?'background:rgba(255,75,75,0.03)':''}">
-        <td style="position:sticky;left:0;background:${s.isIssue?'rgba(255,75,75,0.04)':'var(--surface)'};font-size:12px;font-weight:600;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${s.sku}">${s.sku}</td>
+        <td class="sd-sku-cell" style="position:sticky;left:0;background:${s.isIssue?'rgba(255,75,75,0.04)':'var(--surface)'};font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:160px;max-width:320px;cursor:default" title="${s.sku}">${s.sku}</td>
         ${allChannels.map(ch=>{
           const v = s.channels[ch]||0;
           return `<td class="td-right" style="font-family:Montserrat,sans-serif;font-size:12px;color:${v>0?'var(--t1)':'var(--t3)'}">${v>0?v.toLocaleString():'-'}</td>`;
