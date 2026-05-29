@@ -610,11 +610,14 @@ tbody tr:hover td{background:var(--surface2)}
         </div>
         <div class="table-wrap">
           <table id="salesTable">
-            <thead><tr>
-              <th>품목명</th><th>옵션</th><th>SKU</th>
+            <thead id="salesTableHead"><tr>
+              <th onclick="setSalesSort('name')" style="cursor:pointer" title="품목명 정렬">품목명 <span id="ss-name"></span></th>
+              <th>옵션</th><th>SKU</th>
               <th style="text-align:center">날짜</th>
-              <th style="text-align:right">판매수량</th><th style="text-align:right">원가(원)</th>
-              <th style="text-align:right">매출(원)</th><th style="text-align:right">수익(원)</th>
+              <th onclick="setSalesSort('qty')" style="text-align:right;cursor:pointer" title="판매수량 정렬">판매수량 <span id="ss-qty"></span></th>
+              <th style="text-align:right">원가(원)</th>
+              <th onclick="setSalesSort('rev')" style="text-align:right;cursor:pointer" title="매출 정렬">매출(원) <span id="ss-rev">↓</span></th>
+              <th onclick="setSalesSort('margin')" style="text-align:right;cursor:pointer" title="수익 정렬">수익(원) <span id="ss-margin"></span></th>
               <th style="text-align:right">재고</th>
             </tr></thead>
             <tbody id="salesBody"></tbody>
@@ -1435,70 +1438,71 @@ function fmtWon(won){
 }
 function fmtWonFull(won){ return '₩' + Math.round(won).toLocaleString() + '원'; }
 function drawHomeChart(){
-  const ctx=document.getElementById('homeChart');
+  const ctx=document.getElementById("homeChart");
   if(!ctx) return;
   if(homeChartInst) homeChartInst.destroy();
-
-  const data = uploadedSalesData.length ? uploadedSalesData : [];
-
-  let labels, chartData, label;
-
-  if(data.length > 0) {
-    // ── 업로드 데이터 기반 ──
-    // 채널별 집계
-    const chMap = {};
-    data.forEach(r => { const ch = r.channel||'기타'; chMap[ch] = (chMap[ch]||0) + r.rev; });
-    const sorted = Object.entries(chMap).sort((a,b)=>b[1]-a[1]);
-
-    labels   = sorted.map(([ch])=>ch);
-    chartData= sorted.map(([,v])=>v);
-    label    = '채널별 매출(원)';
-
-    // 업로드 날짜 배지
-    const meta = loadFromStorage(STORAGE_KEYS.salesMeta);
-    const dateStr = meta?.uploadedAt || '';
-    const titleEl = document.getElementById('homeChartTitle');
-    if(titleEl) titleEl.textContent = '채널별 매출 현황' + (dateStr ? ' · ' + dateStr : '');
-  } else {
-    // ── 데이터 없음 ──
-    labels    = ['데이터 없음'];
-    chartData = [0];
-    label     = '매출(원)';
-    const titleEl = document.getElementById('homeChartTitle');
-    if(titleEl) titleEl.textContent = '주간 매출 추이';
+  const salesRows = uploadedSalesData.length ? uploadedSalesData : [];
+  const sdRows = typeof sdRawRows !== "undefined" ? sdRawRows.filter(r=>r.channel!=="전체(판매수량)") : [];
+  const now = new Date();
+  function getRange(period) {
+    const r=[];
+    if(period==="일") { for(let i=6;i>=0;i--){const d=new Date(now);d.setDate(now.getDate()-i);r.push(d.toISOString().slice(0,10));} }
+    else if(period==="주") { for(let i=7;i>=0;i--){const d=new Date(now);d.setDate(now.getDate()-i*7);r.push(d.toISOString().slice(0,10));} }
+    else if(period==="월") { for(let i=11;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth()-i,1);r.push(d.toISOString().slice(0,7));} }
+    else { for(let i=4;i>=0;i--) r.push(String(now.getFullYear()-i)); }
+    return r;
   }
-
-  const mn = chartData.length > 1 ? Math.min(...chartData) * 0.85 : 0;
-  const mx = chartData.length > 1 ? Math.max(...chartData) * 1.1  : 1000;
-
-  homeChartInst = new Chart(ctx,{
-    type: data.length > 0 ? 'bar' : 'line',
-    data:{
-      labels,
-      datasets:[{
-        label,
-        data: chartData,
-        backgroundColor: data.length > 0
-          ? chartData.map((_,i) => `rgba(0,122,255,${0.85-i*0.06})`)
-          : 'rgba(0,122,255,0.08)',
-        borderColor: '#007AFF',
-        borderWidth: data.length > 0 ? 0 : 2.5,
-        borderRadius: 6,
-        borderSkipped: false,
-        pointBackgroundColor:'#007AFF',
-        pointRadius: data.length > 0 ? 0 : 4,
-        fill: true, tension:.4
-      }]
-    },
-    options:{
-      responsive:true, maintainAspectRatio:false,
-      plugins:{
-        legend:{display:false},
-        tooltip:{callbacks:{label:v=>'₩'+Math.round(v.raw).toLocaleString()+'원'}}
-      },
+  const period = currentSalesPeriod || "주";
+  const range  = getRange(period);
+  const allRevRows = [
+    ...salesRows.map(r=>({date:r.date||"", rev:r.rev||0})),
+    ...sdRows.map(r=>({date:r.date||"", rev:r.rev||0}))
+  ].filter(r=>r.rev>0);
+  let labels=[], chartData=[], label="매출(원)";
+  if(allRevRows.length>0){
+    if(period==="일"){
+      labels=range.map(d=>d.slice(5));
+      chartData=range.map(d=>allRevRows.filter(r=>r.date===d).reduce((s,r)=>s+r.rev,0));
+    } else if(period==="주"){
+      labels=range.map(d=>{ const dt=new Date(d); return (dt.getMonth()+1)+"월W"+Math.ceil(dt.getDate()/7); });
+      chartData=range.map(ws=>{ const we=new Date(ws); we.setDate(we.getDate()+6); return allRevRows.filter(r=>r.date>=ws&&r.date<=we.toISOString().slice(0,10)).reduce((s,r)=>s+r.rev,0); });
+    } else if(period==="월"){
+      labels=range.map(d=>d.slice(5)+"월");
+      chartData=range.map(ym=>allRevRows.filter(r=>r.date&&r.date.slice(0,7)===ym).reduce((s,r)=>s+r.rev,0));
+    } else {
+      labels=range;
+      chartData=range.map(yr=>allRevRows.filter(r=>r.date&&r.date.slice(0,4)===yr).reduce((s,r)=>s+r.rev,0));
+    }
+    const pLabel={일:"최근 7일",주:"최근 8주",월:"월별",년:"연도별"}[period]||period;
+    const rStr=(period==="일"||period==="주")?" ("+range[0]+" ~ "+range[range.length-1]+")":"";
+    const titleEl=document.getElementById("homeChartTitle");
+    if(titleEl) titleEl.textContent="채널별 매출 현황 · "+pLabel+rStr;
+  } else {
+    const chMap={};
+    salesRows.forEach(r=>{chMap[r.channel||"기타"]=(chMap[r.channel||"기타"]||0)+r.rev;});
+    const sorted=Object.entries(chMap).sort((a,b)=>b[1]-a[1]);
+    if(sorted.length>0){
+      labels=sorted.map(([ch])=>ch); chartData=sorted.map(([,v])=>v);
+      const titleEl=document.getElementById("homeChartTitle");
+      if(titleEl) titleEl.textContent="채널별 매출 현황";
+    } else {
+      labels=["데이터 없음"]; chartData=[0];
+      const titleEl=document.getElementById("homeChartTitle");
+      if(titleEl) titleEl.textContent="주간 매출 추이";
+    }
+  }
+  const mn=chartData.some(v=>v>0)?Math.min(...chartData.filter(v=>v>0))*0.8:0;
+  const mx=chartData.some(v=>v>0)?Math.max(...chartData)*1.15:1000;
+  homeChartInst=new Chart(ctx,{
+    type:"bar",
+    data:{labels,datasets:[{label,data:chartData,
+      backgroundColor:chartData.map((_,i)=>"rgba(0,122,255,"+Math.max(0.2,0.85-i*0.04)+")"),
+      borderColor:"#007AFF",borderWidth:0,borderRadius:6,borderSkipped:false}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:v=>"₩"+Math.round(v.raw).toLocaleString()+"원"}}},
       scales:{
-        x:{grid:{color:getColor()},ticks:{color:getTextColor(),font:{size:11,family:'Montserrat'}}},
-        y:{grid:{color:getColor()},ticks:{color:getTextColor(),font:{size:11,family:'Montserrat'},callback:v=>'₩'+fmtWon(v)},min:mn,max:mx}
+        x:{grid:{color:getColor()},ticks:{color:getTextColor(),font:{size:11,family:"Montserrat"}}},
+        y:{grid:{color:getColor()},ticks:{color:getTextColor(),font:{size:11,family:"Montserrat"},callback:v=>"₩"+fmtWon(v)},min:mn,max:mx}
       }
     }
   });
@@ -1836,6 +1840,16 @@ function renderSalesTable(data, channel){
     return;
   }
 
+  // ── 정렬 적용 ──
+  const sortedData = [...data].sort((a,b)=>{
+    let v;
+    if(salesSortCol==="name")   v=a.name.localeCompare(b.name,"ko");
+    else if(salesSortCol==="qty") v=a.qty-b.qty;
+    else if(salesSortCol==="margin") v=a.margin-b.margin;
+    else v=a.rev-b.rev; // rev default
+    return salesSortDir==="desc"?-v:v;
+  });
+  data = sortedData;
   // ── 합계 계산 ──
   const totalQty    = data.reduce((s,r)=>s+r.qty,0);
   const totalRev    = data.reduce((s,r)=>s+r.rev,0);
@@ -2002,6 +2016,17 @@ function showLowStockModal(){
 
 // ── TABLES ──
 const salesData=[]; // 실제 데이터는 엑셀 업로드 후 반영됩니다
+// ── 이커머스 테이블 정렬 ──
+function setSalesSort(col){
+  if(salesSortCol===col) salesSortDir=salesSortDir==="desc"?"asc":"desc";
+  else { salesSortCol=col; salesSortDir=col==="name"?"asc":"desc"; }
+  // 헤더 아이콘 업데이트
+  ["name","qty","rev","margin"].forEach(k=>{
+    const el=document.getElementById("ss-"+k);
+    if(el) el.textContent=salesSortCol===k?(salesSortDir==="desc"?"↓":"↑"):"";
+  });
+  buildSalesTable();
+}
 function buildSalesTable(){
   const data = uploadedSalesData.length ? uploadedSalesData : salesData;
   updateSalesChannelTabs(uploadedSalesData);
@@ -2449,6 +2474,8 @@ function parseAdsExcel(json, headers, filename) {
 // 대시보드 전체 업데이트
 // ════════════════════════════════════════════════
 let uploadedSalesData = [];
+let salesSortCol = 'rev'; // 정렬 컬럼: rev, qty, margin, name
+let salesSortDir = 'desc'; // 정렬 방향
 let uploadedAdsData   = [];
 
 // ── localStorage 데이터 영속성 ──
@@ -2518,7 +2545,11 @@ function applyDataToDashboard() {
   const totalRev    = data.reduce((s,r) => s + r.rev, 0);
   const totalMargin = data.reduce((s,r) => s + r.margin, 0);
   const marginRate  = totalRev > 0 ? ((totalMargin/totalRev)*100).toFixed(1) : 0;
-  const lowStock    = data.filter(r => r.stock > 0 && r.stock < 100).length;
+  // 재고 데이터 연결: invRawData에서 발주필요 건수
+  const invLow = (typeof invRawData!=="undefined"&&invRawData.length>0)
+    ? invRawData.filter(r=>r.orderPoint==="발주필요").length
+    : data.filter(r=>r.stock>0&&r.stock<100).length;
+  const lowStock = invLow;
 
   // ── 채널별 KPI 업데이트 ──
   const chRev = {};
@@ -2533,8 +2564,10 @@ function applyDataToDashboard() {
     const rev = Object.entries(chRev).filter(([ch])=>match.some(m=>ch.toLowerCase().includes(m.toLowerCase()))).reduce((s,[,v])=>s+v,0);
     const el = document.getElementById(elId);
     const sub = document.getElementById(elId+'-sub');
-    if(el) el.innerHTML = rev>0 ? `₩${Math.round(rev).toLocaleString()}<span class="kpi-unit">원</span>` : `--<span class="kpi-unit">원</span>`;
-    if(sub) sub.textContent = rev>0 ? '업로드 데이터 반영' : '데이터 없음';
+    const ecDts=[...new Set(data.map(r=>r.date).filter(Boolean))].sort();
+    const ecRange=ecDts.length>1?ecDts[0]+"~"+ecDts[ecDts.length-1]:ecDts[0]||"";
+    if(el) el.innerHTML=rev>0?"₩"+Math.round(rev).toLocaleString()+"<span class=\"kpi-unit\">원</span>":"--<span class=\"kpi-unit\">원</span>";
+    if(sub) sub.textContent=rev>0?"업로드 데이터 반영"+(ecRange?" ("+ecRange+")":""):"데이터 없음";
   });
   // 외부 채널 합계 (쿠팡/스마트스토어/자사몰 제외)
   const mainKeys = ['쿠팡','스마트스토어','smartstore','네이버스토어','자사몰','meliens','mall','shop'];
@@ -2557,7 +2590,12 @@ function applyDataToDashboard() {
   if(revEl2) revEl2.innerHTML = `₩${revK}<span class="kpi-unit">원</span>`;
   if(marEl2) marEl2.innerHTML = `₩${marK}<span class="kpi-unit">원</span>`;
   const chgRev = document.getElementById('chg-revenue');
-  if(chgRev){ chgRev.textContent='▲ 업로드 데이터 반영'; chgRev.className='kpi-change up'; }
+    if(chgRev){
+    const allDts=[...new Set(data.map(r=>r.date).filter(Boolean))].sort();
+    const wkStr=allDts.length>1?allDts[0]+"~"+allDts[allDts.length-1]:allDts[0]||"";
+    chgRev.textContent="▲ 업로드 데이터 반영"+(wkStr?" ("+wkStr+")":"");
+    chgRev.className="kpi-change up";
+  }
   const chgMar = document.getElementById('chg-margin');
   if(chgMar){ chgMar.textContent=`▲ 마진율 ${marginRate}%`; chgMar.className='kpi-change up'; }
   const roasEl = document.getElementById('val-roas');
@@ -2592,20 +2630,22 @@ function applyDataToDashboard() {
   data.forEach(r => {
     channelTotals[r.channel] = (channelTotals[r.channel] || 0) + r.rev;
   });
-  if (Object.keys(channelTotals).length > 0) {
-    const maxRev = Math.max(...Object.values(channelTotals));
-    const heatChannels = Object.entries(channelTotals)
-      .sort((a,b) => b[1]-a[1])
-      .slice(0,12)
-      .map(([n,v]) => ({n, v: Math.round((v/maxRev)*100)}));
-    const el = document.getElementById('homeHeatmap');
-    if (el) {
-      el.innerHTML = heatChannels.map(c => {
-        const op = 0.15 + (c.v/100)*0.75;
-        const bg = `rgba(0,122,255,${op.toFixed(2)})`;
-        const tc = c.v > 55 ? '#fff' : isDark ? '#7EC8FF' : '#003D7A';
-        return `<div class="hcell" style="background:${bg};color:${tc}" title="${c.n}: ${c.v}%">${c.n}<br>${c.v}%</div>`;
-      }).join('');
+  if(Object.keys(channelTotals).length>0){
+    const totalRevAll=Object.values(channelTotals).reduce((s,v)=>s+v,0);
+    const heatChannels=Object.entries(channelTotals)
+      .sort((a,b)=>b[1]-a[1])
+      .map(([n,v])=>({n,v:Math.round(v/totalRevAll*100),raw:v}));
+    // 반올림 오차 보정: 합계가 100이 되도록 마지막 항목 조정
+    const sumPct=heatChannels.reduce((s,r)=>s+r.v,0);
+    if(heatChannels.length>0) heatChannels[heatChannels.length-1].v+=100-sumPct;
+    const el=document.getElementById("homeHeatmap");
+    if(el){
+      el.innerHTML=heatChannels.map(ch=>{
+        const op=0.12+(ch.v/100)*0.78;
+        const bg="rgba(0,122,255,"+op.toFixed(2)+")";
+        const tc=ch.v>45?"#fff":isDark?"#7EC8FF":"#003D7A";
+        return "<div class=\"hcell\" style=\"background:"+bg+";color:"+tc+"\" title=\""+ch.n+": "+ch.v+"%\">"+ch.n+"<br>"+ch.v+"%</div>";
+      }).join("");
     }
   }
 
@@ -5497,7 +5537,7 @@ function renderSDTable() {
       <td></td>
     </tr>`;
 
-    tbody.innerHTML = rows_html + sumRow;
+    tbody.innerHTML = sumRow + rows_html;
   }
 
   // ── 13. 행 카운트 & 테이블 표시 ──────────────────────
