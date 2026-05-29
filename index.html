@@ -332,6 +332,8 @@ tbody tr:hover td{background:var(--surface2)}
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
 </style>
+  <!-- Supabase SDK -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 <div class="app">
@@ -1072,7 +1074,12 @@ tbody tr:hover td{background:var(--surface2)}
       <!-- 파일 업로드 영역 -->
       <div class="card" style="margin-bottom:16px">
         <div class="card-header">
-          <div class="card-title">📂 일일 판매 데이터 업로드</div>
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <div class="card-title">📂 일일 판매 데이터 업로드</div>
+            <span id="sbStatus" style="font-size:11px;padding:3px 8px;border-radius:10px;background:var(--surface2)">
+              ● 로컬 저장
+            </span>
+          </div>
           <div style="font-size:11px;color:var(--t3)">매일 아침 전날 데이터를 업로드하세요 · <span style="color:var(--teal);font-weight:700">이커머스 매출 & 홈 대시보드 자동 반영</span> · 브라우저에 자동 저장</div>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
@@ -2496,6 +2503,25 @@ const STORAGE_KEYS = {
 };
 const MAX_STORAGE_MB = 4; // localStorage 최대 4MB 사용
 
+// ══════════════════════════════════════════════
+// Supabase 연결 설정
+// ══════════════════════════════════════════════
+const SUPABASE_URL = 'https://svwhmswkkjzuntafudyp.supabase.co';   // ← 여기에 입력
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN2d2htc3dra2p6dW50YWZ1ZHlwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwMDMwOTYsImV4cCI6MjA5NTU3OTA5Nn0.o8ACjZmwl9Z9xCXwgrU5uIXdNkc24WI4t7cIrd2W7b4'; // ← 여기에 입력
+
+let _sb = null;
+function getSB() {
+  if(!_sb && SUPABASE_URL !== 'YOUR_SUPABASE_URL') {
+    _sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  }
+  return _sb;
+}
+
+// Supabase 연결 여부 확인
+function isSupabaseReady() {
+  return SUPABASE_URL !== 'YOUR_SUPABASE_URL' && !!getSB();
+}
+
 function saveToStorage(key, data) {
   try {
     const json = JSON.stringify(data);
@@ -2521,6 +2547,141 @@ function loadFromStorage(key) {
   }
 }
 
+
+
+// ══════════════════════════════════════════════════════════
+// Supabase 연동 함수들
+// ══════════════════════════════════════════════════════════
+
+// SD 데이터 저장 (파일 업로드 시)
+async function sbSaveSDRows(newRows, filename) {
+  const sb = getSB();
+  if(!sb) return;
+  try {
+    // 1. 기존 파일 데이터 삭제
+    await sb.from('sd_rows').delete().eq('file_name', filename);
+    
+    // 2. 새 데이터 배치 삽입 (500행씩)
+    const batch = 500;
+    for(let i=0; i<newRows.length; i+=batch) {
+      const chunk = newRows.slice(i, i+batch).map(r => ({
+        date:        r.date,
+        sku:         r.sku,
+        channel:     r.channel,
+        qty:         r.qty   || 0,
+        rev:         r.rev   || 0,
+        cost:        r.cost  || 0,
+        file_name:   filename,
+      }));
+      const { error } = await sb.from('sd_rows').insert(chunk);
+      if(error) { console.error('Supabase 저장 오류:', error); return; }
+    }
+
+    // 3. 파일 레지스트리 저장
+    const dates = [...new Set(newRows.map(r=>r.date))].sort();
+    await sb.from('sd_files').upsert({
+      filename,
+      source:      newRows[0]?.channel || '',
+      rows_count:  newRows.length,
+      channels:    [...new Set(newRows.map(r=>r.channel))].join(', '),
+      date_range:  dates.length>1 ? dates[0]+' ~ '+dates[dates.length-1] : dates[0],
+      uploaded_at: new Date().toISOString(),
+    }, {onConflict: 'filename'});
+
+    console.log('✅ Supabase 저장 완료:', filename, newRows.length+'행');
+  } catch(e) {
+    console.error('Supabase 오류:', e);
+  }
+}
+
+// 페이지 로드시 Supabase에서 데이터 불러오기
+async function sbLoadAllData() {
+  const sb = getSB();
+  if(!sb) return false;
+  try {
+    showToast('☁️ 서버에서 데이터 불러오는 중...');
+    
+    // SD 데이터 전체 로드
+    const { data: rows, error } = await sb
+      .from('sd_rows')
+      .select('date,sku,channel,qty,rev,cost,file_name')
+      .order('date', {ascending: true});
+    
+    if(error) throw error;
+    
+    if(rows && rows.length > 0) {
+      // snake_case → camelCase 변환
+      sdRawRows = rows.map(r => ({
+        date:    r.date,
+        sku:     r.sku,
+        channel: normalizeChannel(r.channel),
+        qty:     r.qty   || 0,
+        rev:     r.rev   || 0,
+        cost:    r.cost  || 0,
+        _file:   r.file_name,
+      }));
+      
+      // 파일 레지스트리 로드
+      const { data: files } = await sb.from('sd_files').select('*').order('uploaded_at', {ascending: false});
+      if(files) sdFileRegistry = files.map(f => ({
+        filename:   f.filename,
+        source:     f.source,
+        rows:       f.rows_count,
+        channels:   f.channels,
+        dateRange:  f.date_range,
+        uploadedAt: new Date(f.uploaded_at).toLocaleString('ko-KR',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}),
+      }));
+
+      // localStorage에도 백업
+      try { saveToStorage(SD_STORAGE_KEY, sdRawRows); } catch(e) {}
+
+      updateSDFilters();
+      renderSDTable();
+      renderFileRegistry();
+      setTimeout(()=>syncRevenueFromSD(), 200);
+      showToast('✅ 서버 데이터 로드 완료 — '+sdRawRows.length+'행');
+      return true;
+    }
+    showToast('📭 서버에 저장된 데이터가 없습니다');
+    return false;
+  } catch(e) {
+    console.error('Supabase 로드 오류:', e);
+    showToast('⚠️ 서버 연결 실패 — 로컬 데이터 사용');
+    return false;
+  }
+}
+
+// 파일 삭제 시 Supabase에서도 삭제
+async function sbDeleteFile(filename) {
+  const sb = getSB();
+  if(!sb) return;
+  try {
+    await sb.from('sd_rows').delete().eq('file_name', filename);
+    await sb.from('sd_files').delete().eq('filename', filename);
+    console.log('Supabase 삭제 완료:', filename);
+  } catch(e) {
+    console.error('Supabase 삭제 오류:', e);
+  }
+}
+
+// 연결 상태 확인 + UI 표시
+async function checkSupabaseConnection() {
+  const statusEl = document.getElementById('sbStatus');
+  if(!statusEl) return;
+  
+  if(!isSupabaseReady()) {
+    statusEl.innerHTML = '<span style="color:var(--amber)">⚠ 서버 미연결 (로컬 저장)</span>';
+    return;
+  }
+  try {
+    const sb = getSB();
+    const { error } = await sb.from('app_meta').select('key').limit(1);
+    if(error) throw error;
+    statusEl.innerHTML = '<span style="color:var(--teal)">● 서버 연결됨 (실시간 공유)</span>';
+  } catch(e) {
+    statusEl.innerHTML = '<span style="color:var(--red)">✕ 서버 연결 오류</span>';
+  }
+}
 
 // ── 전체 데이터 내보내기/가져오기 (PC간 공유) ──
 function exportAllData() {
@@ -5136,13 +5297,18 @@ function mergeSDRows(newRows, source, filename) {
   sdFileRegistry.push(fileEntry);
   try { saveToStorage('meliens_sd_files', sdFileRegistry); } catch(e) {}
 
-  // 저장
+  // ── 로컬 저장 ──
   try { saveToStorage(SD_STORAGE_KEY, sdRawRows); } catch(e) {}
   saveToStorage(SD_META_KEY, {
     lastFile: filename,
     lastUpdate: new Date().toLocaleString('ko-KR',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}),
     totalRows: sdRawRows.length
   });
+
+  // ── Supabase 저장 (연결된 경우) ──
+  if(isSupabaseReady()) {
+    sbSaveSDRows(newRows, filename);
+  }
 
   // UI 업데이트
   const statusId = source==='쿠팡'?'coupangFileStatus':'adminFileStatus';
@@ -5354,9 +5520,11 @@ function deleteSDFile(filename) {
   // 파일 레지스트리에서 제거
   sdFileRegistry = sdFileRegistry.filter(f => f.filename !== filename);
 
-  // 저장
+  // 로컬 저장
   try { saveToStorage(SD_STORAGE_KEY, sdRawRows); } catch(e) {}
   try { saveToStorage('meliens_sd_files', sdFileRegistry); } catch(e) {}
+  // Supabase 삭제
+  if(isSupabaseReady()) sbDeleteFile(filename);
 
   // UI 업데이트
   renderFileRegistry();
@@ -5762,6 +5930,12 @@ function _buildSalesExcel() {
 
 // ── 페이지 진입 시 초기화 ──
 function initSalesDataPage() {
+  // Supabase 연결된 경우 서버에서 로드 (로컬보다 우선)
+  if(isSupabaseReady()) {
+    sbLoadAllData();
+    return;
+  }
+
   // 파일 레지스트리 복구
   const savedFiles = loadFromStorage('meliens_sd_files');
   if(savedFiles && Array.isArray(savedFiles)) sdFileRegistry = savedFiles;
@@ -5770,9 +5944,8 @@ function initSalesDataPage() {
   if(saved && saved.length > 0) {
     const validDate = /^20[2-9]\d-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\d|3[01])$/;
     sdRawRows = saved
-      .filter(r => validDate.test(r.date))  // 나쁜 날짜 완전 제거
+      .filter(r => validDate.test(r.date))
       .map(r => ({...r, channel: normalizeChannel(r.channel)}));
-    // 정제된 데이터 다시 저장 (나쁜 날짜 영구 제거)
     try { saveToStorage(SD_STORAGE_KEY, sdRawRows); } catch(e) {}
     updateSDFilters();
     renderSDTable();
