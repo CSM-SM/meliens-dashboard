@@ -1076,9 +1076,10 @@ tbody tr:hover td{background:var(--surface2)}
         <div class="card-header">
           <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
             <div class="card-title">📂 일일 판매 데이터 업로드</div>
-            <span id="sbStatus" style="font-size:11px;padding:3px 8px;border-radius:10px;background:var(--surface2)">
-              ● 로컬 저장
-            </span>
+            <div style="display:flex;align-items:center;gap:6px">
+              <span id="sbStatus" style="font-size:11px;padding:3px 8px;border-radius:10px;background:var(--surface2)">● 로컬 저장</span>
+              <span id="sbRefreshTime" style="font-size:10px;color:var(--t3)"></span>
+            </div>
           </div>
           <div style="font-size:11px;color:var(--t3)">매일 아침 전날 데이터를 업로드하세요 · <span style="color:var(--teal);font-weight:700">이커머스 매출 & 홈 대시보드 자동 반영</span> · 브라우저에 자동 저장</div>
         </div>
@@ -2686,6 +2687,9 @@ async function checkSupabaseConnection() {
     const { error } = await sb.from('app_meta').select('key').limit(1);
     if(error) throw error;
     statusEl.innerHTML = '<span style="color:var(--teal)">● 서버 연결됨 (실시간 공유)</span>';
+    const now = new Date().toLocaleString('ko-KR',{hour:'2-digit',minute:'2-digit'});
+    const refEl = document.getElementById('sbRefreshTime');
+    if(refEl) refEl.textContent = '5분마다 자동 갱신 · 마지막 ' + now;
   } catch(e) {
     statusEl.innerHTML = '<span style="color:var(--red)">✕ 서버 연결 오류</span>';
   }
@@ -6063,12 +6067,23 @@ window.addEventListener('DOMContentLoaded', ()=>{
       if(filterBar) filterBar.style.display = 'block';
       if(tableCard) tableCard.style.display = 'block';
       if(loadMsg) loadMsg.style.display = 'none';
-      // stock 타입이면 재고현황 렌더러 호출
       const isStock = (invRawData[0] && invRawData[0].barcode !== undefined) ||
                       (invHeaders && invHeaders.fileType === 'stock');
       if(isStock) renderInvTableStock();
       else renderInvTable();
     }, 100);
+  }
+
+  // ── Supabase 연결 확인 + 자동 새로고침 (5분) ──
+  checkSupabaseConnection();
+  if(isSupabaseReady()) {
+    setInterval(async () => {
+      if(document.hidden) return; // 백그라운드 탭이면 스킵
+      await sbLoadAllData();
+      const now = new Date().toLocaleString('ko-KR',{hour:'2-digit',minute:'2-digit'});
+      const el = document.getElementById('sbRefreshTime');
+      if(el) el.textContent = '자동갱신 ' + now;
+    }, 5 * 60 * 1000);
   }
 });
 
