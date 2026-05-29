@@ -363,10 +363,7 @@ tbody tr:hover td{background:var(--surface2)}
       <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
       B2B / 신규 매출
     </div>
-    <div class="nav-item" onclick="showPage('cx',this)">
-      <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-      CX / VOC
-    </div>
+
     <div class="nav-item" onclick="showPage('inventory',this)">
       <svg viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
       재고 관리
@@ -813,106 +810,6 @@ tbody tr:hover td{background:var(--surface2)}
               <button onclick="closeB2BModal()" style="flex:1;padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--t2);font-size:13px;font-weight:600;cursor:pointer">취소</button>
               <button onclick="saveB2BDeal()" style="flex:2;padding:10px;border-radius:8px;background:var(--navy);color:#fff;font-size:13px;font-weight:700;cursor:pointer;border:none">저장하기</button>
             </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- ═══ CX PAGE ═══ -->
-    <div class="page" id="page-cx">
-      <div class="section-title">CX / VOC 관리</div>
-      <div class="section-sub">고객 목소리(VOC) 유형별 통계와 서비스 품질을 직접 입력해 관리합니다. 데이터는 브라우저에 자동 저장됩니다.</div>
-
-      <!-- KPI 카드 -->
-      <div class="grid-4" style="margin-bottom:16px">
-        <div class="kpi-card"><div class="kpi-accent" style="background:var(--teal)"></div>
-          <div class="kpi-label">CS 만족도</div>
-          <div class="kpi-value" id="cx-satisfaction">--<span class="kpi-unit">/5</span></div>
-          <div class="kpi-change up" id="cx-satisfaction-sub">데이터 입력 필요</div>
-        </div>
-        <div class="kpi-card"><div class="kpi-accent" style="background:var(--blue)"></div>
-          <div class="kpi-label">이번 주 VOC 건수</div>
-          <div class="kpi-value" id="cx-voc-total">--<span class="kpi-unit">건</span></div>
-          <div class="kpi-change neutral" id="cx-voc-sub">전체 유형 합계</div>
-        </div>
-        <div class="kpi-card"><div class="kpi-accent" style="background:var(--amber)"></div>
-          <div class="kpi-label">평균 응대 시간</div>
-          <div class="kpi-value" id="cx-response">--<span class="kpi-unit">시간</span></div>
-          <div class="kpi-change neutral" id="cx-response-sub">목표 4시간 이내</div>
-        </div>
-        <div class="kpi-card"><div class="kpi-accent" style="background:var(--red)"></div>
-          <div class="kpi-label">제품 불량률</div>
-          <div class="kpi-value" id="cx-defect">--<span class="kpi-unit">%</span></div>
-          <div class="kpi-change neutral" id="cx-defect-sub">불량 건수 기준</div>
-        </div>
-      </div>
-
-      <!-- 입력 폼 -->
-      <div class="card" style="margin-bottom:14px">
-        <div class="card-header">
-          <div class="card-title">📝 이번 주 CX 데이터 입력</div>
-          <button onclick="saveCXData()" style="padding:7px 16px;background:var(--navy);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">저장</button>
-        </div>
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px">
-          <div>
-            <label style="font-size:11px;font-weight:700;color:var(--t3);display:block;margin-bottom:5px">CS 만족도 (0~5)</label>
-            <input id="cx-i-satisfaction" type="number" min="0" max="5" step="0.1" placeholder="예) 4.7" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--t1);font-size:13px">
-          </div>
-          <div>
-            <label style="font-size:11px;font-weight:700;color:var(--t3);display:block;margin-bottom:5px">평균 응대 시간 (시간)</label>
-            <input id="cx-i-response" type="number" min="0" step="0.1" placeholder="예) 2.3" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--t1);font-size:13px">
-          </div>
-          <div>
-            <label style="font-size:11px;font-weight:700;color:var(--t3);display:block;margin-bottom:5px">제품 불량률 (%)</label>
-            <input id="cx-i-defect" type="number" min="0" step="0.1" placeholder="예) 0.8" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--t1);font-size:13px">
-          </div>
-          <div>
-            <label style="font-size:11px;font-weight:700;color:var(--t3);display:block;margin-bottom:5px">굿서비스 유지</label>
-            <select id="cx-i-goodservice" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--t1);font-size:13px">
-              <option value="yes">✅ 유지 중</option>
-              <option value="no">❌ 미달</option>
-            </select>
-          </div>
-        </div>
-        <div style="font-size:12px;font-weight:700;color:var(--t2);margin-bottom:10px">VOC 유형별 건수 입력</div>
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px">
-          <div>
-            <label style="font-size:11px;color:var(--t3);display:block;margin-bottom:5px">🚚 배송 지연</label>
-            <input id="cx-i-delivery" type="number" min="0" placeholder="0" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--t1);font-size:13px">
-          </div>
-          <div>
-            <label style="font-size:11px;color:var(--t3);display:block;margin-bottom:5px">⚠️ 제품 불량</label>
-            <input id="cx-i-defect-cnt" type="number" min="0" placeholder="0" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--t1);font-size:13px">
-          </div>
-          <div>
-            <label style="font-size:11px;color:var(--t3);display:block;margin-bottom:5px">↩️ 단순 변심</label>
-            <input id="cx-i-change" type="number" min="0" placeholder="0" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--t1);font-size:13px">
-          </div>
-          <div>
-            <label style="font-size:11px;color:var(--t3);display:block;margin-bottom:5px">❓ 문의/기타</label>
-            <input id="cx-i-inquiry" type="number" min="0" placeholder="0" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--t1);font-size:13px">
-          </div>
-        </div>
-        <div style="margin-top:12px">
-          <label style="font-size:11px;font-weight:700;color:var(--t3);display:block;margin-bottom:5px">채널별 리뷰 평점 (쿠팡,스스,자사몰,지그재그,무신사 순서로 쉼표 구분)</label>
-          <input id="cx-i-ratings" type="text" placeholder="예) 4.8,4.7,4.6,4.5,4.3" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--t1);font-size:13px">
-        </div>
-      </div>
-
-      <div class="grid-2">
-        <div class="card">
-          <div class="card-header"><div class="card-title">VOC 유형별 현황</div><div class="card-sub" id="cx-voc-date">이번 주</div></div>
-          <div style="display:flex;align-items:center;gap:20px">
-            <div style="position:relative;width:180px;height:180px;flex-shrink:0">
-              <canvas id="vocChart" role="img" aria-label="VOC 유형별 원형 차트"></canvas>
-            </div>
-            <div class="voc-legend" id="vocLegend"></div>
-          </div>
-        </div>
-        <div class="card">
-          <div class="card-header"><div class="card-title">채널별 리뷰 평점</div></div>
-          <div style="position:relative;height:200px">
-            <canvas id="reviewChart" role="img" aria-label="채널별 리뷰 평점 비교"></canvas>
           </div>
         </div>
       </div>
@@ -1395,10 +1292,9 @@ function showPage(id, el){
   document.getElementById('page-'+id).classList.add('active');
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   if(el) el.classList.add('active');
-  const titles = {home:'종합 대시보드',sales:'이커머스 매출 관리',ads:'광고 성과 대시보드',b2b:'B2B / 신규 매출',cx:'CX / VOC 관리',inventory:'재고 관리',salesdata:'채널/SKU별 판매 데이터',upload:'데이터 업로드 센터'};
+  const titles = {home:'종합 대시보드',sales:'이커머스 매출 관리',ads:'광고 성과 대시보드',b2b:'B2B / 신규 매출',inventory:'재고 관리',salesdata:'채널/SKU별 판매 데이터',upload:'데이터 업로드 센터'};
   document.getElementById('pageTitle').textContent = titles[id] || '';
   if(id==='ads') setTimeout(()=>{drawAdsCharts();},50);
-  if(id==='cx') setTimeout(()=>{renderCXPage();},50);
   if(id==='upload') setTimeout(()=>{renderDataStatus();},50);
   if(id==='inventory' && invRawData.length===0) setTimeout(()=>{loadInventoryFromSheet();},100);
   if(id==='salesdata') setTimeout(()=>{initSalesDataPage();},100);
@@ -3475,7 +3371,7 @@ function exportExcel() {
 function exportPDF() {
   const now = new Date();
   const dateStr = now.toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric'});
-  const pageNames = {home:'종합 대시보드',sales:'이커머스 매출 관리',ads:'광고 성과',b2b:'B2B 신규 매출',cx:'CX VOC 관리'};
+  const pageNames = {home:'종합 대시보드',sales:'이커머스 매출 관리',ads:'광고 성과',b2b:'B2B 신규 매출'};
   const pageName = pageNames[currentPage] || '주간보고서';
 
   document.getElementById('print-inject')?.remove();
@@ -4473,79 +4369,6 @@ function generateBriefing() {
 
 
 // ════════════════════════════════════════════════
-// CX / VOC 데이터 관리
-// ════════════════════════════════════════════════
-const CX_STORAGE_KEY = 'meliens_cx_data';
-let cxData = { satisfaction:0, response:0, defect:0, goodservice:'yes',
-               delivery:0, defectCnt:0, change:0, inquiry:0,
-               ratings:'', updatedAt:'' };
-
-function loadCXData() {
-  try {
-    const saved = localStorage.getItem(CX_STORAGE_KEY);
-    if(saved) cxData = JSON.parse(saved);
-  } catch(e) {}
-}
-function saveCXData() {
-  cxData = {
-    satisfaction: parseFloat(document.getElementById('cx-i-satisfaction').value) || 0,
-    response:     parseFloat(document.getElementById('cx-i-response').value) || 0,
-    defect:       parseFloat(document.getElementById('cx-i-defect').value) || 0,
-    goodservice:  document.getElementById('cx-i-goodservice').value,
-    delivery:     parseInt(document.getElementById('cx-i-delivery').value) || 0,
-    defectCnt:    parseInt(document.getElementById('cx-i-defect-cnt').value) || 0,
-    change:       parseInt(document.getElementById('cx-i-change').value) || 0,
-    inquiry:      parseInt(document.getElementById('cx-i-inquiry').value) || 0,
-    ratings:      document.getElementById('cx-i-ratings').value.trim(),
-    updatedAt:    new Date().toLocaleDateString('ko-KR',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'})
-  };
-  try { localStorage.setItem(CX_STORAGE_KEY, JSON.stringify(cxData)); } catch(e) {}
-  renderCXPage();
-  showToast('✅ CX 데이터가 저장됐습니다');
-}
-function renderCXPage() {
-  loadCXData();
-  // 폼에 값 채우기
-  const setVal = (id, val) => { const el=document.getElementById(id); if(el) el.value=val||''; };
-  setVal('cx-i-satisfaction', cxData.satisfaction||'');
-  setVal('cx-i-response',     cxData.response||'');
-  setVal('cx-i-defect',       cxData.defect||'');
-  setVal('cx-i-delivery',     cxData.delivery||'');
-  setVal('cx-i-defect-cnt',   cxData.defectCnt||'');
-  setVal('cx-i-change',       cxData.change||'');
-  setVal('cx-i-inquiry',      cxData.inquiry||'');
-  setVal('cx-i-ratings',      cxData.ratings||'');
-  const gsEl = document.getElementById('cx-i-goodservice');
-  if(gsEl) gsEl.value = cxData.goodservice||'yes';
-
-  // KPI 카드
-  const upd=(id,html)=>{const el=document.getElementById(id);if(el)el.innerHTML=html;};
-  const total = (cxData.delivery||0)+(cxData.defectCnt||0)+(cxData.change||0)+(cxData.inquiry||0);
-  if(cxData.satisfaction>0) {
-    upd('cx-satisfaction', `${cxData.satisfaction}<span class="kpi-unit">/5</span>`);
-    upd('cx-satisfaction-sub', cxData.goodservice==='yes'?'▲ 굿서비스 유지':'▼ 굿서비스 미달');
-  }
-  if(total>0) {
-    upd('cx-voc-total', `${total}<span class="kpi-unit">건</span>`);
-    upd('cx-voc-sub', `배송${cxData.delivery} 불량${cxData.defectCnt} 변심${cxData.change} 문의${cxData.inquiry}`);
-  }
-  if(cxData.response>0) {
-    upd('cx-response', `${cxData.response}<span class="kpi-unit">시간</span>`);
-    const ok = cxData.response <= 4;
-    upd('cx-response-sub', ok?'▲ 목표 이내':'▼ 목표 초과');
-  }
-  if(cxData.defect>0) {
-    upd('cx-defect', `${cxData.defect}<span class="kpi-unit">%</span>`);
-    upd('cx-defect-sub', cxData.defect<1?'▲ 양호':'▼ 개선 필요');
-  }
-  if(cxData.updatedAt) {
-    const dateEl = document.getElementById('cx-voc-date');
-    if(dateEl) dateEl.textContent = cxData.updatedAt + ' 업데이트';
-  }
-  // 차트 업데이트
-  drawCxCharts();
-}
-
 // ════════════════════════════════════════════════
 // 광고 성과 실제 데이터 연동
 // ════════════════════════════════════════════════
@@ -6035,7 +5858,7 @@ window.addEventListener('DOMContentLoaded', ()=>{
   buildStockTable();
   buildAdsTable();
   buildB2B();
-  renderCXPage();
+  
   renderDataStatus();
 
   // 저장된 데이터가 있으면 대시보드 즉시 업데이트
@@ -6051,7 +5874,7 @@ window.addEventListener('DOMContentLoaded', ()=>{
     if(lastPage && lastPage !== 'home') {
       const navItems = document.querySelectorAll('.nav-item');
       const pageNavMap = {
-        sales: 1, ads: 2, b2b: 3, cx: 4, inventory: 5, assets: 6, upload: 7
+        sales: 1, ads: 2, b2b: 3, inventory: 4, assets: 5, upload: 6
       };
       const navIdx = pageNavMap[lastPage];
       const targetNav = navIdx !== undefined ? navItems[navIdx] : null;
