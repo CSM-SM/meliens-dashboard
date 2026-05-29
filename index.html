@@ -1244,6 +1244,16 @@ tbody tr:hover td{background:var(--surface2)}
           <svg style="width:13px;height:13px;stroke:var(--red);fill:none;stroke-width:2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
           저장 데이터 초기화
         </button>
+          <button onclick="exportAllData()" title="현재 데이터를 JSON 파일로 내보내기 (다른 PC에서 Import 가능)"
+            style="display:flex;align-items:center;gap:6px;padding:7px 14px;background:var(--surface);border:1px solid var(--teal);color:var(--teal);border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;margin-left:6px">
+            <svg style="width:13px;height:13px;stroke:var(--teal);fill:none;stroke-width:2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            데이터 내보내기
+          </button>
+          <label title="다른 PC에서 내보낸 JSON 파일 불러오기" style="display:flex;align-items:center;gap:6px;padding:7px 14px;background:var(--surface);border:1px solid var(--blue);color:var(--blue);border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;margin-left:6px">
+            <svg style="width:13px;height:13px;stroke:var(--blue);fill:none;stroke-width:2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            데이터 가져오기
+            <input type="file" accept=".json" style="display:none" onchange="importAllData(event)">
+          </label>
       </div>
       <div class="section-sub" style="margin-bottom:16px">각 채널에서 다운로드한 정산 원본 파일을 수정 없이 그대로 업로드하세요. 업로드한 데이터는 브라우저에 저장되어 새로고침해도 유지됩니다.</div>
       <!-- 저장 상태 배너 -->
@@ -1699,16 +1709,8 @@ function setHomeFilter(el, period){
   document.querySelectorAll('.card-header .filter-tabs .ftab').forEach(t=>t.classList.remove('active'));
   el.classList.add('active');
   currentSalesPeriod = period;
-  if(!homeChartInst) return;
-  const labels = periodLabels[period] || periodLabels['주'];
-  const data   = periodBaseData[period] || periodBaseData['주'];
-  homeChartInst.data.labels = labels;
-  homeChartInst.data.datasets[0].data = data;
-  const mn = Math.min(...data)*0.93;
-  const mx = Math.max(...data)*1.07;
-  homeChartInst.options.scales.y.min = Math.round(mn*0.93);
-  homeChartInst.options.scales.y.max = Math.round(mx*1.07);
-  homeChartInst.update();
+  // 실제 데이터로 차트 다시 그리기 (제목 + 데이터 모두 업데이트)
+  drawHomeChart();
 }
 
 // ── 이커머스 매출 기간 필터 ──
@@ -2519,6 +2521,56 @@ function loadFromStorage(key) {
   }
 }
 
+
+// ── 전체 데이터 내보내기/가져오기 (PC간 공유) ──
+function exportAllData() {
+  const snapshot = {
+    version: 2,
+    exportedAt: new Date().toISOString(),
+    exportedBy: 'meliens-dashboard',
+    data: {}
+  };
+  // 모든 storage 키 수집
+  const allKeys = [
+    ...Object.values(STORAGE_KEYS),
+    SD_STORAGE_KEY, SD_META_KEY, 'meliens_sd_files'
+  ];
+  allKeys.forEach(k => {
+    const v = localStorage.getItem(k);
+    if(v) snapshot.data[k] = v; // 이미 JSON 문자열
+  });
+  const blob = new Blob([JSON.stringify(snapshot, null, 2)], {type:'application/json'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  const date = new Date().toLocaleDateString('ko-KR',{year:'2-digit',month:'2-digit',day:'2-digit'}).replace(/\. /g,'').replace('.','');
+  a.href = url; a.download = 'meliens_data_' + date + '.json'; a.click();
+  URL.revokeObjectURL(url);
+  showToast('✅ 데이터 내보내기 완료 — 다른 PC에서 "데이터 가져오기"로 불러오세요');
+}
+
+function importAllData(event) {
+  const file = event.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const snapshot = JSON.parse(e.target.result);
+      if(!snapshot.data) { showToast('❌ 올바른 내보내기 파일이 아닙니다'); return; }
+      if(!confirm('현재 브라우저의 모든 데이터를 가져온 데이터로 교체할까요?')) return;
+      // 기존 데이터 초기화
+      Object.values(STORAGE_KEYS).forEach(k => localStorage.removeItem(k));
+      [SD_STORAGE_KEY, SD_META_KEY, 'meliens_sd_files'].forEach(k => localStorage.removeItem(k));
+      // 새 데이터 주입
+      Object.entries(snapshot.data).forEach(([k,v]) => localStorage.setItem(k, v));
+      showToast('✅ 데이터 가져오기 완료 — 페이지를 새로고침합니다');
+      setTimeout(() => location.reload(), 1200);
+    } catch(err) {
+      showToast('❌ 파일 읽기 오류: ' + err.message);
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
 function clearAllData() {
   if(!confirm('저장된 모든 데이터를 삭제할까요?')) return;
   Object.values(STORAGE_KEYS).forEach(k => localStorage.removeItem(k));
